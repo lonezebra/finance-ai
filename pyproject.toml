@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "finance-ai"
+version = "0.1.0"
+description = "Local-first personal finance AI desktop app"
+requires-python = ">=3.12"
+dependencies = [
+    "sqlalchemy",
+    "pydantic",
+    "python-dotenv",
+    "pandas",
+    "openpyxl",
+    "PySide6",
+    "openai",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/finance_ai"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

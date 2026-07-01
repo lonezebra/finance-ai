@@ -22,8 +22,20 @@ def format_briefing(briefing: OpenCFOBriefing) -> str:
         "",
         f"Financial Confidence: {confidence.score}/100 ({confidence.label})",
         "",
-        "Recommended Action Items:",
+        f"Financial Health: {briefing.health.score}/100 ({briefing.health.label})",
+        "",
+        "Current Risks:",
     ]
+
+    if briefing.health.issues:
+        for issue in briefing.health.issues:
+            lines.append(f"- [{issue.severity}] {issue.message}")
+    else:
+        lines.append("- No significant financial risks detected.")
+
+    lines.append("")
+    lines.append("Recommended Action Items:")
+    #    "Recommended Action Items:",
 
     for item in briefing.action_items:
         lines.append(f"- [{item.priority}] {item.title}: {item.reason}")

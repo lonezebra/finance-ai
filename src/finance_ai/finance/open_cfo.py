@@ -2,6 +2,10 @@ from dataclasses import dataclass, field
 
 from finance_ai.finance.confidence import FinancialConfidenceScore, calculate_financial_confidence_score
 from finance_ai.finance.metrics import FinancialSnapshot, create_financial_snapshot
+from finance_ai.finance.health import (
+    FinancialHealthScore,
+    calculate_financial_health_from_snapshot,
+)
 
 
 @dataclass(frozen=True)
@@ -15,21 +19,32 @@ class ActionItem:
 class OpenCFOBriefing:
     snapshot: FinancialSnapshot
     confidence: FinancialConfidenceScore
+    health: FinancialHealthScore
     action_items: list[ActionItem] = field(default_factory=list)
 
     @property
     def headline(self) -> str:
+
         if self.confidence.score < 50:
-            return "Your data needs attention before Open CFO can give strong recommendations."
+            return (
+                "Your financial data needs attention before Open CFO can make "
+                "high-confidence recommendations."
+            )
 
-        if self.snapshot.monthly_cash_flow < 0:
-            return "Your current snapshot shows negative monthly cash flow."
+        if self.health.score < 60:
+            return (
+                "Your financial health requires attention. "
+                "Review today's recommendations."
+            )
 
-        if self.snapshot.emergency_fund_months < 3:
-            return "Your emergency fund appears below the recommended minimum."
+        if self.health.score < 80:
+            return (
+                "Your finances are stable, but there are opportunities to improve."
+            )
 
-        return "Your financial snapshot appears stable based on current data."
-
+        return (
+            "Your finances appear healthy and your data is current."
+        )
 
 def generate_action_items(
     snapshot: FinancialSnapshot,
@@ -105,10 +120,16 @@ def generate_action_items(
 def create_open_cfo_briefing(month: str) -> OpenCFOBriefing:
     snapshot = create_financial_snapshot(month)
     confidence = calculate_financial_confidence_score()
-    action_items = generate_action_items(snapshot, confidence)
+    health = calculate_financial_health_from_snapshot(snapshot)
+
+    action_items = generate_action_items(
+        snapshot,
+        confidence,
+    )
 
     return OpenCFOBriefing(
         snapshot=snapshot,
         confidence=confidence,
+        health=health,
         action_items=action_items,
     )

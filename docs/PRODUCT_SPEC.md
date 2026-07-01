@@ -161,3 +161,37 @@ Possible future modules:
 - Scenario engine
 - Bank CSV import rules
 - AI-generated monthly financial review
+
+## Product North Star
+
+Open CFO helps the user identify the highest-impact next financial action, then stress-test that action through transparent scenario planning.
+
+The app should be exceptional at two things:
+
+1. Next Best Action
+2. Scenario Planning
+
+### Next Best Action
+
+The app should consistently answer:
+
+- What should I do next?
+- Why does it matter?
+- What data supports it?
+- What tradeoff am I making?
+- How confident is this recommendation?
+
+### Scenario Planning
+
+The app should allow users to model what-if questions such as:
+
+- What if I pay extra toward debt?
+- What if income changes?
+- What if expenses increase or decrease?
+- What if I make a major purchase?
+- What if I receive a windfall?
+- What if investment returns differ from assumptions?
+
+Python performs the scenario calculations.
+
+The AI explains the results, assumptions, and tradeoffs.

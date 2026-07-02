@@ -45,7 +45,7 @@ def format_briefing(briefing: OpenCFOBriefing) -> str:
                 f"Difficulty: {opportunity.difficulty.value})"
             )
             lines.append(f"  Reason: {opportunity.reason}")
-    
+    return "\n".join(lines)
 
 
 def briefing_summary(month: str) -> str:

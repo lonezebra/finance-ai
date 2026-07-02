@@ -33,14 +33,18 @@ def format_briefing(briefing: OpenCFOBriefing) -> str:
     else:
         lines.append("- No significant financial risks detected.")
 
-    lines.append("")
-    lines.append("Recommended Action Items:")
-    #    "Recommended Action Items:",
+        lines.append("")
+        lines.append("Top Opportunities:")
 
-    for item in briefing.action_items:
-        lines.append(f"- [{item.priority}] {item.title}: {item.reason}")
-
-    return "\n".join(lines)
+        for opportunity in briefing.top_opportunities[:3]:
+            lines.append(
+                f"- {opportunity.title} "
+                f"(Score: {opportunity.opportunity_score}, "
+                f"Impact: {opportunity.impact_score}, "
+                f"Confidence: {opportunity.confidence_score}/100, "
+                f"Difficulty: {opportunity.difficulty.value})"
+            )
+            lines.append(f"  Reason: {opportunity.reason}")
 
 
 def briefing_summary(month: str) -> str:

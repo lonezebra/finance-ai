@@ -5,6 +5,7 @@ from finance_ai.finance.summary import format_currency, format_months, format_pe
 def format_briefing(briefing: OpenCFOBriefing) -> str:
     snapshot = briefing.snapshot
     confidence = briefing.confidence
+    health = briefing.health
 
     lines = [
         f"Open CFO Briefing for {snapshot.month}",
@@ -22,20 +23,21 @@ def format_briefing(briefing: OpenCFOBriefing) -> str:
         "",
         f"Financial Confidence: {confidence.score}/100 ({confidence.label})",
         "",
-        f"Financial Health: {briefing.health.score}/100 ({briefing.health.label})",
+        f"Financial Health: {health.score}/100 ({health.label})",
         "",
         "Current Risks:",
     ]
 
-    if briefing.health.issues:
-        for issue in briefing.health.issues:
+    if health.issues:
+        for issue in health.issues:
             lines.append(f"- [{issue.severity}] {issue.message}")
     else:
         lines.append("- No significant financial risks detected.")
 
-        lines.append("")
-        lines.append("Top Opportunities:")
+    lines.append("")
+    lines.append("Top Opportunities:")
 
+    if briefing.top_opportunities:
         for opportunity in briefing.top_opportunities[:3]:
             lines.append(
                 f"- {opportunity.title} "
@@ -45,6 +47,10 @@ def format_briefing(briefing: OpenCFOBriefing) -> str:
                 f"Difficulty: {opportunity.difficulty.value})"
             )
             lines.append(f"  Reason: {opportunity.reason}")
+    else:
+        lines.append("- No opportunities identified.")
+
+    return "\n".join(lines)
 
 
 def briefing_summary(month: str) -> str:

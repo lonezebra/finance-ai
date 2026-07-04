@@ -1,4 +1,4 @@
-.PHONY: help activate test reset-db init-db import-demo briefing status push
+.PHONY: help activate test reset-db init-db import-demo briefing run status push
 
 help:
 	@echo "Open CFO development commands"
@@ -10,6 +10,7 @@ help:
 	@echo "make briefing    Print Open CFO briefing"
 	@echo "make status      Show git status"
 	@echo "make push        Push commits"
+	@echo "make run         Run Open CFO app"
 
 test:
 	PYTHONPATH=src pytest
@@ -32,3 +33,6 @@ status:
 
 push:
 	git push
+
+run:
+	PYTHONPATH=src .venv/bin/python -m finance_ai.ui.app

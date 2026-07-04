@@ -1,12 +1,20 @@
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QLibraryInfo
-
 
 def configure_qt() -> None:
-    plugin_root = Path(QLibraryInfo.path(QLibraryInfo.PluginsPath))
+    project_root = Path(__file__).resolve().parents[3]
+    plugin_root = (
+        project_root
+        / ".venv"
+        / "lib"
+        / "python3.12"
+        / "site-packages"
+        / "PySide6"
+        / "Qt"
+        / "plugins"
+    )
     platforms_path = plugin_root / "platforms"
 
-    if platforms_path.exists():
-        os.environ.setdefault("QT_QPA_PLATFORM_PLUGIN_PATH", str(platforms_path))
+    os.environ["QT_PLUGIN_PATH"] = str(plugin_root)
+    os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(platforms_path)

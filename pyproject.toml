@@ -13,8 +13,8 @@ dependencies = [
     "python-dotenv",
     "pandas",
     "openpyxl",
-    "PySide6",
     "openai",
+    "customtkinter>=6.0.0",
 ]
 
 [dependency-groups]

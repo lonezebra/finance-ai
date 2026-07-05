@@ -1,18 +1,33 @@
 from finance_ai.ai.lmstudio_client import LMStudioClient
-from finance_ai.ai.prompts import SYSTEM_PROMPT, executive_briefing_prompt
-from finance_ai.finance.briefing_summary import briefing_summary
+from finance_ai.ai.prompt_library import PromptLibrary
 
 
 class AIRuntime:
     def __init__(self):
         self.client = LMStudioClient()
+        self.prompts = PromptLibrary()
 
-    def generate_executive_briefing(self, month: str = "2026-06") -> str:
-        briefing = briefing_summary(month)
+    def ask(
+        self,
+        prompt: str,
+        context: str,
+        temperature: float = 0.4,
+    ) -> str:
+
+        system_prompt = self.prompts.load(prompt)
 
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": executive_briefing_prompt(briefing)},
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": context,
+            },
         ]
 
-        return self.client.chat(messages)
+        return self.client.chat(
+            messages,
+            temperature=temperature,
+        )

@@ -108,3 +108,21 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     action: Mapped[str] = mapped_column(String, nullable=False)
     details: Mapped[str | None] = mapped_column(Text)
+
+class FinancialSnapshotRecord(Base):
+    __tablename__ = "financial_snapshot_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    month: Mapped[str] = mapped_column(String, nullable=False)
+
+    total_assets: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    total_debt: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    net_worth: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    cash_balance: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    monthly_income: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    monthly_expenses: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    monthly_cash_flow: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    savings_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    debt_to_income_ratio: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    emergency_fund_months: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

@@ -1,32 +1,19 @@
-# Roadmap
+## Version 0.3
 
-## Milestone 0.1 - Foundation
-- Project structure
-- SQLite database
-- PySide6 app shell
-- Settings
-- Logging
+Desktop Shell
 
-## Milestone 0.2 - Excel Templates
-- Create official finance template
-- Import template data into SQLite
-- Validate required fields
+## Version 0.4
 
-## Milestone 0.3 - Dashboard
-- Net worth
-- Debt
-- Income
-- Expenses
-- Budget status
+Strategic Advisor
 
-## Milestone 0.4 - AI Assistant
-- LM Studio connection
-- Database summaries
-- Financial Q&A
-- Suggested actions
+## Version 0.5
 
-## Milestone 0.5 - Safe Tool Actions
-- AI proposes structured actions
-- User confirms
-- Python executes
-- Audit log records changes
+Financial History Engine
+
+## Version 0.6
+
+Scenario Planning
+
+## Version 1.0
+
+Open CFO

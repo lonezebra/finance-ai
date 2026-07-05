@@ -25,7 +25,11 @@ The application combines:
 
 - Deterministic financial calculations
 - Transparent decision support
-- Local AI reasoning
+- Local AI Runtime
+- Strategic Advisor powered by local LLMs
+- Prompt Library
+- Model-agnostic AI architecture
+- Thinking state framework
 - Scenario planning
 - Structured financial workflows
 
@@ -126,14 +130,20 @@ Excel / CSV
 
 # Current Features
 
+- Local-first architecture
 - SQLite financial database
-- Structured Excel templates
-- Financial Snapshot
-- Financial Health Score
-- Financial Confidence Score
-- Executive Briefing
+- Structured Excel import pipeline
+- Workbook validation
+- Financial Snapshot engine
+- Financial Health engine
+- Financial Confidence engine
 - Decision Engine
-- Automated unit tests
+- Executive Briefing
+- Local AI Runtime
+- Strategic Advisor (LM Studio)
+- Prompt Library
+- Thinking state framework
+- Automated tests
 
 ---
 
@@ -148,28 +158,29 @@ Excel / CSV
 
 ## Version 0.3
 
-- Desktop Dashboard (PySide6)
+Desktop Shell
 
 ## Version 0.4
 
-- Local AI Advisor
-- LM Studio integration
-- Conversation history
+Strategic Advisor
+Prompt Library
+Executive Narrative
 
 ## Version 0.5
 
-- Scenario Planning Engine
-- What-if analysis
+Financial History Engine
 
 ## Version 0.6
 
-- Interactive dashboard
-- Charts
-- Financial timeline
+Scenario Planning
+
+## Version 0.7
+
+Dashboard
 
 ## Version 1.0
 
-Open CFO release.
+Open CFO release
 
 ---
 

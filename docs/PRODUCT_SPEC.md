@@ -195,3 +195,19 @@ The app should allow users to model what-if questions such as:
 Python performs the scenario calculations.
 
 The AI explains the results, assumptions, and tradeoffs.
+
+## AI Runtime
+
+Open CFO's AI layer is model-agnostic.
+
+Responsibilities:
+
+- Prompt management
+- Context assembly
+- Thinking state
+- Strategic reasoning
+- Model abstraction
+
+The runtime should support multiple local models through LM Studio.
+
+The user may choose different models for different workloads.

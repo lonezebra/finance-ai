@@ -16,7 +16,7 @@ The system should default to:
 - backups before destructive actions
 - clear audit history
 
-### 2. Python calculates, AI explains
+### 2. Python calculates/structures, AI reasons/communicates
 
 Deterministic calculations belong in Python.
 
@@ -91,6 +91,12 @@ Any future data-changing AI action must:
 - require confirmation
 - write to the audit log
 - create a backup when appropriate
+
+### 11. AI should never replace deterministic logic
+
+AI should enhance user understanding.
+
+Business rules and financial calculations remain deterministic and testable.
 
 ## Development Workflow
 

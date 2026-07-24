@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from enum import Enum
 
 #from finance_ai.decision.scoring import decision_score
@@ -44,3 +45,19 @@ class FinancialDecision:
 @dataclass(frozen=True)
 class DecisionSet:
     decisions: list[FinancialDecision]
+
+
+@dataclass(frozen=True)
+class DebtSummary:
+    name: str
+    balance: float
+    interest_rate: float | None
+    minimum_payment: float | None = None
+
+
+@dataclass(frozen=True)
+class GoalSummary:
+    name: str
+    target_amount: float | None
+    current_amount: float | None
+    target_date: date | None

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from finance_ai.decision.engine import generate_decisions
+from finance_ai.decision.engine import generate_decisions_from_db
 from finance_ai.finance.metrics import FinancialSnapshot, create_financial_snapshot
 from finance_ai.finance.summary import format_currency
 from finance_ai.history.comparison import compare_snapshots
@@ -106,7 +106,7 @@ def run_scenario(month: str, scenario: Scenario) -> ScenarioResult:
     projected_record = SnapshotRecord(id=None, created_at=datetime.now(), snapshot=projected)
     comparison = compare_snapshots(baseline_record, projected_record)
 
-    projected_decisions = generate_decisions(projected)
+    projected_decisions = generate_decisions_from_db(projected)
 
     return ScenarioResult(
         scenario=scenario,

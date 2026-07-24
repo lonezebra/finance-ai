@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+from finance_ai.decision.models import FinancialDecision
 from finance_ai.finance.metrics import FinancialSnapshot
 from finance_ai.history.interpreter import InterpretedChange
 
@@ -12,3 +13,4 @@ class ExecutiveReport:
     strengths: list[str] = field(default_factory=list)
     concerns: list[str] = field(default_factory=list)
     recommended_focus: str | None = None
+    top_decisions: list[FinancialDecision] = field(default_factory=list)

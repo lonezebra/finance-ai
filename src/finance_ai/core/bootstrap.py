@@ -1,5 +1,4 @@
 from finance_ai.config import BACKUP_DIR, DATA_DIR, EXPORT_DIR, IMPORT_DIR, LOG_DIR, REPORT_DIR
-from finance_ai.core.qt import configure_qt
 
 
 def ensure_directories() -> None:
@@ -15,5 +14,4 @@ def ensure_directories() -> None:
 
 
 def bootstrap_app() -> None:
-    configure_qt()
     ensure_directories()

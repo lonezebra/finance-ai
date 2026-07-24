@@ -1,6 +1,9 @@
-from finance_ai.finance.briefing_summary import briefing_summary
+from finance_ai.ai.advisor import StrategicAdvisor
 
 
 class BriefingPresenter:
+    def __init__(self):
+        self.advisor = StrategicAdvisor()
+
     def get_briefing_text(self, month: str = "2026-06") -> str:
-        return briefing_summary(month)
+        return self.advisor.executive_briefing(month)

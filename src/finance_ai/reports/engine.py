@@ -1,4 +1,4 @@
-from finance_ai.decision.engine import generate_decisions
+from finance_ai.decision.engine import generate_decisions_from_db
 from finance_ai.history.comparison import compare_snapshots
 from finance_ai.history.engine import get_previous_snapshot, save_snapshot
 from finance_ai.history.interpreter import ChangeSignificance, interpret_comparison
@@ -21,7 +21,7 @@ def create_executive_report(month: str) -> ExecutiveReport:
         ]
 
     snapshot = current_record.snapshot
-    decision_set = generate_decisions(snapshot)
+    decision_set = generate_decisions_from_db(snapshot)
 
     return ExecutiveReport(
         month=month,

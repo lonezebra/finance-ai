@@ -1,5 +1,6 @@
 from finance_ai.ai.runtime import AIRuntime
-from finance_ai.finance.briefing_summary import briefing_summary
+from finance_ai.reports.engine import create_executive_report
+from finance_ai.reports.formatter import format_executive_report_for_ai
 
 
 class StrategicAdvisor:
@@ -11,9 +12,10 @@ class StrategicAdvisor:
         month: str = "2026-06",
     ) -> str:
 
-        briefing = briefing_summary(month)
+        report = create_executive_report(month)
+        context = format_executive_report_for_ai(report)
 
         return self.runtime.ask(
             prompt="executive_briefing",
-            context=briefing,
+            context=context,
         )

@@ -1,16 +1,18 @@
 import customtkinter as ctk
 
-from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter
+from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter, BriefingRequestState
+
+PLACEHOLDER_TEXT = "Click \"Generate Briefing\" to get your AI-powered executive briefing."
 
 
 class BriefingView(ctk.CTkFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, presenter: BriefingPresenter):
         super().__init__(parent)
 
-        self.presenter = BriefingPresenter()
+        self.presenter = presenter
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(3, weight=1)
 
         title = ctk.CTkLabel(
             self,
@@ -19,19 +21,68 @@ class BriefingView(ctk.CTkFrame):
         )
         title.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 10))
 
+        self.status_label = ctk.CTkLabel(self, text="", anchor="w")
+        self.status_label.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 5))
+
+        self.progress_bar = ctk.CTkProgressBar(self)
+        self.progress_bar.set(0)
+        self.progress_bar.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 5))
+        self.progress_bar.grid_remove()
+
         self.textbox = ctk.CTkTextbox(self, wrap="word")
-        self.textbox.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.textbox.grid(row=3, column=0, sticky="nsew", padx=20, pady=10)
 
-        self.refresh_button = ctk.CTkButton(
+        self.generate_button = ctk.CTkButton(
             self,
-            text="Refresh Briefing",
-            command=self.refresh,
+            text="Generate Briefing",
+            command=self.generate,
         )
-        self.refresh_button.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 20))
+        self.generate_button.grid(row=4, column=0, sticky="ew", padx=20, pady=(10, 20))
 
-        self.refresh()
+        self.bind("<Destroy>", self._on_destroy)
 
-    def refresh(self):
-        briefing = self.presenter.get_briefing_text()
+        # DONE/ERROR are fully rendered by attach()'s replay below (via _on_success/_on_error
+        # -> _finish, which sets text, chrome, and button state together). Only RUNNING's
+        # button/progress-bar chrome and IDLE's placeholder need setting up front, since
+        # attach() has nothing to replay for those two cases (RUNNING only replays the
+        # thinking-phase label/progress, not the chrome; IDLE has no request to replay at all).
+        if self.presenter.state == BriefingRequestState.RUNNING:
+            self.generate_button.configure(state="disabled", text="Generating...")
+            self.progress_bar.grid()
+        elif self.presenter.state == BriefingRequestState.IDLE:
+            self.textbox.insert("1.0", PLACEHOLDER_TEXT)
+
+        self.presenter.attach(
+            on_thinking_update=self._on_thinking_update,
+            on_success=self._on_success,
+            on_error=self._on_error,
+        )
+
+    def _on_destroy(self, event):
+        if event.widget is self:
+            self.presenter.detach()
+
+    def generate(self):
+        self.generate_button.configure(state="disabled", text="Generating...")
         self.textbox.delete("1.0", "end")
-        self.textbox.insert("1.0", briefing)
+        self.progress_bar.set(0)
+        self.progress_bar.grid()
+
+        self.presenter.generate(self.winfo_toplevel())
+
+    def _on_thinking_update(self, state):
+        self.status_label.configure(text=state.phase.value)
+        self.progress_bar.set(state.progress / 100)
+
+    def _on_success(self, briefing_text: str):
+        self._finish(briefing_text)
+
+    def _on_error(self, message: str):
+        self._finish(message)
+
+    def _finish(self, text: str):
+        self.status_label.configure(text="")
+        self.progress_bar.grid_remove()
+        self.textbox.delete("1.0", "end")
+        self.textbox.insert("1.0", text)
+        self.generate_button.configure(state="normal", text="Generate Briefing")

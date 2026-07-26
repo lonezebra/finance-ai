@@ -22,6 +22,12 @@ consult it when this file doesn't cover something.
 7. **Never claim a change was made in the user's actual repo unless the user confirms it** — this
    project's private GitHub repo is authoritative, and this environment may only hold a
    reconstruction.
+8. **Error handling, security, observability, and scalability are standing requirements, not a
+   later retrofit.** Weigh all four for every new feature, function, or scope as it's being built —
+   proportionate to what this app actually is (local-first, single-user desktop app, not a
+   multi-tenant service). Don't stop current work to do a giant hardening pass, but don't build new
+   surface area that ignores them either. See §8's Cross-Cutting Concerns Checklist for the current
+   gap list — update it as gaps are found or closed.
 
 ---
 
@@ -128,8 +134,9 @@ finance-ai/
     ├── finance/     # Finance Engine, Opportunity Engine (legacy)
     ├── history/     # Timeline Engine (snapshots, comparison, interpretation)
     ├── imports/     # reader, validator, mapper, importer
-    ├── reports/     # Executive Report Engine (+ formatter.py — next task)
-    └── ui/          # CustomTkinter desktop shell
+    ├── reports/     # Executive Report Engine + formatter.py
+    ├── scenario/    # Scenario Engine (models, engine, formatter)
+    └── ui/          # CustomTkinter desktop shell (report_cards.py, presenters/)
 ```
 
 **Note:** this environment's project knowledge also contains a `reconstructed_project/` tree — a
@@ -214,22 +221,27 @@ import — fine for now, don't stop feature work to fix it.
 
 ### Executive Report Engine
 `ExecutiveReport(month, snapshot, important_changes, strengths, concerns, recommended_focus,
-top_decisions)`. `create_executive_report(month)` saves a snapshot, compares to previous, keeps
-medium/high changes, derives strengths/concerns, ranks decisions.
-**Known issue:** it saves a *new* snapshot on every call, including repeated reads — causing
-duplicate history rows. Fix direction: snapshot on import/explicit refresh only, or read the
-latest snapshot instead of always creating one.
+top_decisions)`. `create_executive_report(month, persist=True)`: with `persist=True` (default)
+saves a snapshot and compares to the previous one; with `persist=False` computes the snapshot
+fresh and compares to the latest saved one without writing anything. Keeps medium/high changes,
+derives strengths/concerns, ranks decisions via `generate_decisions_from_db()`.
+**Partially resolved known issue:** `persist=False` (used by the desktop UI's summary cards, which
+render on every page visit) no longer duplicates history on repeated reads. `persist=True`
+(the "Generate Briefing" path) still saves a new snapshot per click, by design — see §8.
 
 ### AI Architecture
 Principle: *Python calculates. Python structures. AI reasons. AI communicates.*
 `AIRuntime.ask(prompt, context, temperature)` loads a markdown prompt asset, builds messages,
 calls the LM Studio client, returns text — **no business logic here**.
-`StrategicAdvisor.executive_briefing(month)` is the finance-specific facade; currently still uses
-the older `briefing_summary()` string instead of the new `ExecutiveReport` (this is the immediate
-task, see §8). Prompt assets live in `assets/prompts/`; only `executive_briefing.md` is implemented,
-the rest are placeholders. Thinking-state models exist (`ThinkingPhase`: build context → review
-health → review confidence → analyze decisions → generate response) but aren't wired into a
-background-threaded UI request yet.
+`StrategicAdvisor.executive_briefing(month)` and `explain_scenario(month, scenario)` are the
+finance-specific facades; both consume the new `ExecutiveReport`/`ScenarioResult` formatters, not
+the old `briefing_summary()` string. Prompt assets live in `assets/prompts/`; `executive_briefing.md`
+and `scenario.md` are implemented, the rest (`strategic_advisor.md`, `financial_qa.md`,
+`goal_planning.md`, `explain_decision.md`) are still placeholders. Thinking-state models
+(`ThinkingPhase`: build context → review changes → analyze decisions → generate response, corrected
+from an earlier version that described a health/confidence-score review step the current pipeline
+never performs) are wired into a background-threaded UI request via `ai/background.py`'s
+`BackgroundTask` and `ai/thinking.py`'s `ThinkingAnimator` — see `BriefingView`/`BriefingPresenter`.
 
 ---
 
@@ -296,14 +308,47 @@ The user knows how to code but is returning to it after several years away. When
 
 ## 8. Known Issues & Technical Debt
 
+### Cross-Cutting Concerns Checklist (standing requirement — see Rule 8)
+
+Raised by the user after the desktop UI work began; not a one-time task, a lens to apply to
+every feature going forward. Weigh these when scoping new work; fold real fixes in incrementally
+rather than deferring to one giant hardening pass.
+
+- **Error handling:** every user-facing entry point (desktop UI, CLI commands) should fail with a
+  message a non-technical user could act on, not a raw traceback. Current gap: only a handful of
+  files anywhere in `src/` have any `try`/`except` at all (`ai/background.py`'s catch-and-forward
+  pattern and `ai/errors.py`'s friendly LM Studio message are the model to follow); DB-missing or
+  DB-empty states aren't handled anywhere.
+- **Security:** calibrated to this app's actual threat model — local-first, single-user, no
+  network exposure beyond the localhost LM Studio call, no auth needed. All DB access already goes
+  through the SQLAlchemy ORM (no raw SQL found, no injection surface). Known gap: the SQLite file
+  is unencrypted at rest — today that relies on OS-level disk encryption (e.g. FileVault), not
+  app-level; revisit only if the user explicitly wants app-level encryption.
+- **Observability:** `logs/` (`LOG_DIR` in `config.py`) and the `audit_log` table both exist but
+  nothing writes to either — zero uses of Python's `logging` module anywhere in `src/`. Add basic
+  logging (imports, snapshot creation, AI calls, errors) as features are built, not after the fact.
+  Wire `audit_log` in once an actual AI-driven data-mutation feature exists (ties to Rule 4) —
+  building it against nothing yet would be speculative; nothing shipped so far mutates data on the
+  AI's behalf.
+- **Scalability:** not a multi-tenant concern here — the real question is whether SQLite/pandas
+  hold up as one user's transaction history grows over years. They do, comfortably, so this stays
+  low-risk as long as nothing breaks the local-first, single-process assumption.
+
 **High priority (before public beta):**
 1. Import idempotency / duplicate handling
 2. Real database migrations instead of reset-on-schema-change
-3. Snapshot lifecycle — stop creating duplicates on report reads
-4. `ExecutiveReport` → AI-context formatter (see immediate task below)
-5. `StrategicAdvisor` should consume `ExecutiveReport`, not the old briefing string
-6. Background AI execution + loading/thinking state in the UI
-7. Friendly "LM Studio offline" error handling
+3. **Partially done.** `create_executive_report()` now takes a `persist` parameter — `persist=False`
+   (used by the briefing's summary cards, which render on every page visit) computes the snapshot
+   fresh and compares against `get_latest_snapshot()` without writing anything, so viewing no longer
+   duplicates history. `persist=True` (the default, used by "Generate Briefing") still saves a new
+   snapshot per click — that part of the original issue is unchanged, deliberately, since clicking
+   Generate is treated as an explicit check-in worth recording.
+4. **Done** — see `reports/formatter.py` and `format_executive_report_for_ai()`.
+5. **Done** — `StrategicAdvisor.executive_briefing()` now calls `create_executive_report()` →
+   `format_executive_report_for_ai()` → `AIRuntime.ask()`.
+6. **Done** — `ai/background.py`'s `BackgroundTask` + `ai/thinking.py`'s `ThinkingAnimator`, wired
+   into `BriefingView`/`BriefingPresenter`.
+7. **Done** — see `ai/errors.py::describe_ai_error()`.
 8. Guarantee no personal financial data is ever committed to git
 
 **Medium priority:** consolidate Opportunity + Decision engines; rename `difficulty_score` to
@@ -319,6 +364,12 @@ verification; bank API integration; investment analytics; retirement readiness; 
 
 ## 9. Immediate Next Task
 
+**Status: complete.** The formatter, advisor wiring, and Scenario Engine described below have all
+shipped. See §10 for what's actually next.
+
+<details>
+<summary>Original task text (kept for history)</summary>
+
 **Build `src/finance_ai/reports/formatter.py`:**
 - Take an `ExecutiveReport`.
 - Produce concise, structured, AI-readable context: snapshot facts, important changes, strengths,
@@ -333,22 +384,30 @@ Add formatter tests that don't require LM Studio to be running.
 
 **Do not begin Scenario Engine work until this integration is complete and tested.**
 
+</details>
+
 ---
 
 ## 10. Near-Term Roadmap (in order)
 
-**A. Executive Report → AI integration** (formatter, advisor update, tests — see §9)
+**A. Executive Report → AI integration** — **Done.** (formatter, advisor update, tests — see §9)
 
-**B. Scenario Engine** — inputs: income change, recurring expense change, extra debt payment,
-savings/investment contribution change, one-time purchase, one-time windfall. Outputs: projected
-snapshot, comparison vs. current, projected decisions, deterministic scenario facts, AI explanation.
+**B. Scenario Engine** — **Done.** Inputs: income change, recurring expense change, extra debt
+payment, savings/investment contribution change, one-time purchase, one-time windfall. Outputs:
+projected snapshot, comparison vs. current, projected decisions, deterministic scenario facts, AI
+explanation. v1 scope notes in `ROADMAP.md` under "Version 0.6" (single-month projection only, no
+persistence, no DTI recalculation on debt payment).
 
-**C. Decision Engine 2.0** — debt-specific payoff candidates, emergency-fund target candidate,
-investment candidate, goal-funding candidate, expected-impact/tradeoff model, compare decisions
-through scenarios.
+**C. Decision Engine 2.0** — **Done.** Debt-specific payoff candidates (avalanche-ranked),
+emergency-fund target candidate with real dollar gap, investment candidate, goal-funding candidate.
+Deferred to a follow-up (see `ROADMAP.md` "Version 0.7"): wiring decision candidates to
+auto-generated Scenario projections ("compare decisions through scenarios").
 
-**D. Desktop product workflow** — import workflow (choose/preview/confirm), Executive Briefing
-cards, AI-generated narrative, thinking state, Strategic Advisor chat.
+**D. Desktop product workflow** — **In progress.**
+- D1 (real AI briefing + background threading + thinking state): **Done.**
+- D2 (Executive Briefing summary cards): **Done.**
+- D3 (import workflow: choose/preview/confirm): not started.
+- D4 (Strategic Advisor chat): not started.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

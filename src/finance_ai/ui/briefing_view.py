@@ -20,6 +20,10 @@ class BriefingView(ctk.CTkFrame):
         self.report_presenter = ExecutiveReportPresenter()
 
         self.grid_columnconfigure(0, weight=1)
+        # Cards (row 1) and the AI narrative textbox (row 4) split the available vertical
+        # space evenly. Previously only row 4 had weight, so the cards region was pinned to
+        # its construction-time height (260px) regardless of window size -- it never grew.
+        self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(4, weight=1)
 
         title = ctk.CTkLabel(
@@ -71,7 +75,7 @@ class BriefingView(ctk.CTkFrame):
     def _build_cards(self):
         report = self.report_presenter.get_report()
 
-        cards_frame = ctk.CTkScrollableFrame(self, height=260)
+        cards_frame = ctk.CTkScrollableFrame(self)
         cards_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 10))
         cards_frame.grid_columnconfigure(0, weight=1)
 

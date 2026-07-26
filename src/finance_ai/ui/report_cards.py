@@ -9,7 +9,12 @@ NEUTRAL_COLOR = "gray60"
 
 
 def _card_frame(parent, title: str) -> ctk.CTkFrame:
-    card = ctk.CTkFrame(parent)
+    card = ctk.CTkFrame(
+        parent,
+        fg_color=("gray86", "gray17"),
+        border_width=1,
+        border_color=("gray70", "gray30"),
+    )
     card.grid_columnconfigure(0, weight=1)
 
     label = ctk.CTkLabel(

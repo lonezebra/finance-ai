@@ -2,6 +2,7 @@ from tkinter import filedialog
 
 import customtkinter as ctk
 
+from finance_ai.imports.errors import describe_import_error
 from finance_ai.ui.presenters.import_presenter import ImportPresenter, ImportPreview
 
 IDEMPOTENCY_WARNING = (
@@ -62,7 +63,7 @@ class ImportView(ctk.CTkFrame):
             preview = self.presenter.load_preview(path)
         except Exception as exc:  # noqa: BLE001 - shown to the user, not swallowed
             self._preview = None
-            self._render_text(f"Could not read this file:\n\n{exc}")
+            self._render_text(f"Could not read this file.\n\n{describe_import_error(exc)}")
             self.confirm_button.configure(state="disabled")
             return
 
@@ -108,11 +109,7 @@ class ImportView(ctk.CTkFrame):
         try:
             imported_counts = self.presenter.confirm_import(self._preview)
         except Exception as exc:  # noqa: BLE001 - shown to the user, not swallowed
-            self._render_text(
-                f"Import failed:\n\n{exc}\n\n"
-                "If this looks like a duplicate-key error, you may have already imported "
-                "this file."
-            )
+            self._render_text(f"Import failed.\n\n{describe_import_error(exc)}")
             return
 
         lines = ["Import complete.", ""]

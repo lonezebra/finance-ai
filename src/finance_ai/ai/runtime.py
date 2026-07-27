@@ -31,3 +31,24 @@ class AIRuntime:
             messages,
             temperature=temperature,
         )
+
+    def chat(
+        self,
+        prompt: str,
+        context: str,
+        messages: list[dict[str, str]],
+        temperature: float = 0.4,
+    ) -> str:
+        """Multi-turn variant of ask(). context (e.g. the user's financial snapshot) doesn't
+        change turn to turn, so it's folded into the system message once rather than repeated
+        as a user turn; messages carries the growing user/assistant history."""
+
+        role_prompt = self.prompts.load(prompt)
+        system_prompt = f"{role_prompt}\n\n---\n\nCurrent Financial Context:\n\n{context}"
+
+        full_messages = [{"role": "system", "content": system_prompt}, *messages]
+
+        return self.client.chat(
+            full_messages,
+            temperature=temperature,
+        )

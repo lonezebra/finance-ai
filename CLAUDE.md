@@ -227,6 +227,24 @@ construct an `ExecutiveReport` directly), so a missing value never implies an un
 Measures the financial condition itself. Starts at 100, subtracts for no income, negative cash
 flow, low savings rate, low emergency fund, high DTI, negative net worth. Labels: 90+ Excellent,
 80–89 Strong, 70–79 Stable, 60–69 Needs Attention, <60 At Risk.
+**Weighting partially reworked — two concrete defects fixed:**
+1. *Zero income silently passed the DTI check.* DTI is debt payments ÷ income, which
+   `metrics.py::_safe_divide` stores as `0.0` when income is 0 — that fell through every threshold
+   and read as a perfect 0% debt burden, so an unemployed user with real debt obligations was
+   silently **credited** for it. Now flagged as "can't be assessed without recorded income" instead.
+   Deliberately flagged, not penalized: the −25 for no income already reflects the root cause, so
+   charging again would double-count one problem; the value added is transparency.
+2. *Negative net worth was a flat −15 cliff* — −$1 and −$500,000 cost exactly the same. Now scaled
+   against annual income (the standard "how deep is this hole relative to what you earn" reference):
+   >2 years of income → −20/high, >6 months → −12/medium, else → −5/low. Falls back to the original
+   flat −15 when income is 0, since there's no denominator to scale against. Thresholds are
+   heuristics in the same spirit as the DTI/emergency-fund bands, not lender-grade rules.
+*Still open (deliberately not attempted here — it's a redesign, not a reweight):* the score
+saturates easily. It's purely subtractive, so 20% savings / 6mo EF / 20% DTI scores the same
+perfect 100 as 50% savings / 12mo EF / 0% DTI — there's no differentiation above "solid." Adding
+positive signals would mean restructuring the model, which Rule 1 puts out of scope for a
+weighting pass. `tests/test_health.py` now covers this module (it previously had **no tests at
+all**), including regression tests for both fixes above.
 
 ### Opportunity Engine (legacy/transitional)
 Deterministic engine predating the Decision Engine; still powers the current briefing. Should
@@ -441,9 +459,10 @@ rather than deferring to one giant hardening pass.
    public GitHub handle so nothing new is revealed, but they read as noise to anyone who
    clones the repo.
 
-**Medium priority:** consolidate Opportunity + Decision engines; **`difficulty_score` →
-`ease_multiplier` rename and the decision-scoring circular import — both done, see §5**;
-**data-freshness signal for Confidence Score — done, see §5**; improve Health Score weighting;
+**Medium priority:** consolidate Opportunity + Decision engines; rename `difficulty_score` to
+something like an ease/feasibility multiplier; move decision scoring out of the model property;
+**data-freshness signal for Confidence Score — done, see §5**; **Health Score weighting — two
+concrete defects fixed, see §5; the "score saturates easily" limitation remains open**;
 essential-expense-only emergency fund calc; avoid asset/account double counting; better DTI
 methodology (gross vs net income); audit-log integration (import batch integration is done — see
 §10.D); database backup & restore.

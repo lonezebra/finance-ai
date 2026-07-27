@@ -123,7 +123,10 @@ finance-ai/
 │   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx
 ├── backups/, logs/, reports/
 ├── tests/
-│   ├── test_opportunities.py, test_timeline.py, test_decision_engine.py
+│   ├── test_opportunities.py, test_timeline.py, test_decision_engine.py, test_formatter.py,
+│   │   test_scenario_engine.py, test_scenario_formatter.py, test_background.py,
+│   │   test_thinking.py, test_errors.py, test_briefing_presenter.py,
+│   │   test_import_presenter.py, test_import_errors.py
 └── src/finance_ai/
     ├── config.py
     ├── ai/          # runtime, advisor, thinking state, prompt loading
@@ -133,10 +136,10 @@ finance-ai/
     ├── exports/
     ├── finance/     # Finance Engine, Opportunity Engine (legacy)
     ├── history/     # Timeline Engine (snapshots, comparison, interpretation)
-    ├── imports/     # reader, validator, mapper, importer
+    ├── imports/     # reader, validator, mapper, importer, errors
     ├── reports/     # Executive Report Engine + formatter.py
     ├── scenario/    # Scenario Engine (models, engine, formatter)
-    └── ui/          # CustomTkinter desktop shell (report_cards.py, presenters/)
+    └── ui/          # CustomTkinter desktop shell (report_cards.py, import_view.py, presenters/)
 ```
 
 **Note:** this environment's project knowledge also contains a `reconstructed_project/` tree — a
@@ -355,7 +358,8 @@ rather than deferring to one giant hardening pass.
 something like an ease/feasibility multiplier; move decision scoring out of the model property;
 add data-freshness signal to Confidence Score; improve Health Score weighting; essential-expense-only
 emergency fund calc; avoid asset/account double counting; better DTI methodology (gross vs net
-income); import batch/audit-log integration; database backup & restore.
+income); audit-log integration (import batch integration is done — see §10.D); database backup &
+restore.
 
 **Lower priority / later release:** Ollama provider adapter; cross-platform packaging; Windows
 verification; bank API integration; investment analytics; retirement readiness; tax/insurance modules.
@@ -406,7 +410,11 @@ auto-generated Scenario projections ("compare decisions through scenarios").
 **D. Desktop product workflow** — **In progress.**
 - D1 (real AI briefing + background threading + thinking state): **Done.**
 - D2 (Executive Briefing summary cards): **Done.**
-- D3 (import workflow: choose/preview/confirm): not started.
+- D3 (import workflow: choose/preview/confirm): **Done.** Also wired up the previously-dormant
+  `import_batches` table (records a row per successful import) and added
+  `imports/errors.py::describe_import_error()` for friendly duplicate-key messages. Deliberately
+  did not add duplicate detection — import is still not idempotent (known issue #1); the UI just
+  warns clearly and fails gracefully instead of crashing when a re-import collides.
 - D4 (Strategic Advisor chat): not started.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear

@@ -59,7 +59,22 @@ def calculate_financial_health_from_snapshot(snapshot: FinancialSnapshot) -> Fin
         score -= 5
         issues.append(HealthIssue("low", "Emergency fund is below 6 months of expenses."))
 
-    if snapshot.debt_to_income_ratio > 0.50:
+    if snapshot.monthly_income <= 0:
+        # DTI is debt payments / income, so it's undefined without income. The snapshot
+        # stores 0.0 (from _safe_divide's zero-denominator guard), which would otherwise
+        # fall through every threshold below and read as a perfect 0% debt burden -- an
+        # unemployed user with real debt obligations would be silently credited for it.
+        # Flagged rather than penalized: the -25 above already reflects the root cause
+        # (no income), so charging again here would double-count one problem. The value
+        # added is transparency -- the user sees the metric wasn't assessed instead of
+        # seeing nothing at all.
+        issues.append(
+            HealthIssue(
+                "medium",
+                "Debt-to-income ratio can't be assessed without recorded income.",
+            )
+        )
+    elif snapshot.debt_to_income_ratio > 0.50:
         score -= 20
         issues.append(HealthIssue("high", "Debt-to-income ratio is above 50%."))
     elif snapshot.debt_to_income_ratio > 0.36:
@@ -69,8 +84,43 @@ def calculate_financial_health_from_snapshot(snapshot: FinancialSnapshot) -> Fin
         score -= 5
         issues.append(HealthIssue("low", "Debt-to-income ratio is above 25%."))
 
+    # Negative net worth was previously a flat -15 cliff: -$1 and -$500,000 cost exactly
+    # the same. Scaled against annual income instead, the standard reference point for
+    # "how deep is this hole relative to what you earn" -- a new graduate slightly
+    # underwater on student loans is a materially different situation from someone owing
+    # several years of income. Thresholds are heuristics, in the same spirit as the DTI
+    # and emergency-fund bands above, not lender-grade rules.
     if snapshot.net_worth < 0:
-        score -= 15
-        issues.append(HealthIssue("medium", "Net worth is negative."))
+        annual_income = snapshot.monthly_income * 12
+
+        if annual_income <= 0:
+            # No income to scale against -- keep the original flat penalty rather than
+            # guessing at a magnitude we have no denominator for.
+            score -= 15
+            issues.append(HealthIssue("medium", "Net worth is negative."))
+        else:
+            shortfall_vs_income = abs(snapshot.net_worth) / annual_income
+
+            if shortfall_vs_income > 2.0:
+                score -= 20
+                issues.append(
+                    HealthIssue(
+                        "high",
+                        "Net worth is negative by more than two years of income.",
+                    )
+                )
+            elif shortfall_vs_income > 0.5:
+                score -= 12
+                issues.append(
+                    HealthIssue(
+                        "medium",
+                        "Net worth is negative by more than six months of income.",
+                    )
+                )
+            else:
+                score -= 5
+                issues.append(
+                    HealthIssue("low", "Net worth is slightly negative.")
+                )
 
     return FinancialHealthScore(score=max(score, 0), issues=issues)

@@ -1,6 +1,7 @@
 import customtkinter as ctk
 
 from finance_ai.ui.briefing_view import BriefingView
+from finance_ai.ui.import_view import ImportView
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter
 
 
@@ -45,6 +46,7 @@ class MainWindow(ctk.CTk):
 
         pages = [
             "Executive Briefing",
+            "Import Data",
             "Dashboard",
             "Accounts",
             "Transactions",
@@ -75,9 +77,18 @@ class MainWindow(ctk.CTk):
         view = BriefingView(self.content, presenter=self.briefing_presenter)
         view.grid(row=0, column=0, sticky="nsew")
 
+    def _show_import(self):
+        self._clear_content()
+        view = ImportView(self.content)
+        view.grid(row=0, column=0, sticky="nsew")
+
     def _show_placeholder(self, name: str):
         if name == "Executive Briefing":
             self._show_briefing()
+            return
+
+        if name == "Import Data":
+            self._show_import()
             return
 
         self._clear_content()

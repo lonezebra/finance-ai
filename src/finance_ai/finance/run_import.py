@@ -17,9 +17,9 @@ def run_excel_import(path: str | Path) -> dict[str, int]:
         raise ValueError("Workbook validation failed. Import cancelled.")
 
     dataset = map_workbook(workbook)
-    imported_counts = import_dataset(dataset)
+    imported_counts = import_dataset(dataset, source_file=workbook.source_file)
 
-    print("")
+    print()
     print("Import Complete")
     for name, count in imported_counts.items():
         print(f"- {name}: {count}")

@@ -111,8 +111,8 @@ The desktop UI is a presentation adapter over these systems.
 finance-ai/
 ├── Makefile, pyproject.toml, uv.lock, README.md, ROADMAP.md, CHANGELOG.md
 ├── assets/
-│   ├── prompts/            # executive_briefing.md (implemented), strategic_advisor.md,
-│   │                       # scenario.md, financial_qa.md, goal_planning.md,
+│   ├── prompts/            # executive_briefing.md, strategic_advisor.md, scenario.md
+│   │                       # (implemented), financial_qa.md, goal_planning.md,
 │   │                       # explain_decision.md (placeholders)
 │   ├── icons/, themes/
 ├── docs/
@@ -238,9 +238,13 @@ Principle: *Python calculates. Python structures. AI reasons. AI communicates.*
 calls the LM Studio client, returns text — **no business logic here**.
 `StrategicAdvisor.executive_briefing(month)` and `explain_scenario(month, scenario)` are the
 finance-specific facades; both consume the new `ExecutiveReport`/`ScenarioResult` formatters, not
-the old `briefing_summary()` string. Prompt assets live in `assets/prompts/`; `executive_briefing.md`
-and `scenario.md` are implemented, the rest (`strategic_advisor.md`, `financial_qa.md`,
-`goal_planning.md`, `explain_decision.md`) are still placeholders. Thinking-state models
+the old `briefing_summary()` string. `StrategicAdvisor.chat(month, messages)` is the multi-turn
+facade behind the AI Advisor chat page — it folds the same read-only (`persist=False`) executive
+report into a system message alongside the `strategic_advisor.md` prompt, then delegates to
+`AIRuntime.chat()`, a multi-turn sibling of `ask()` that threads a growing user/assistant message
+history rather than a single one-shot exchange. Prompt assets live in `assets/prompts/`;
+`executive_briefing.md`, `scenario.md`, and `strategic_advisor.md` are implemented, the rest
+(`financial_qa.md`, `goal_planning.md`, `explain_decision.md`) are still placeholders. Thinking-state models
 (`ThinkingPhase`: build context → review changes → analyze decisions → generate response, corrected
 from an earlier version that described a health/confidence-score review step the current pipeline
 never performs) are wired into a background-threaded UI request via `ai/background.py`'s
@@ -415,7 +419,15 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   `imports/errors.py::describe_import_error()` for friendly duplicate-key messages. Deliberately
   did not add duplicate detection — import is still not idempotent (known issue #1); the UI just
   warns clearly and fails gracefully instead of crashing when a re-import collides.
-- D4 (Strategic Advisor chat): not started.
+- D4 (Strategic Advisor chat): **Done.** Wired the existing "AI Advisor" sidebar placeholder into
+  a real multi-turn chat: `ChatPresenter` (same `attach()`/`detach()` + defensive
+  `tkinter.TclError` pattern as `BriefingPresenter`, owned by `MainWindow` so a conversation
+  survives navigating away and back) plus `ChatView` (scrollable bubble transcript, text input,
+  indeterminate progress bar while a reply is in flight, auto-scroll to the newest message).
+  In-memory only — conversations are lost on app restart, no new persistence/schema change this
+  pass (see Known Issues: chat history persistence is not tracked as a gap, just an intentional v1
+  scope cut). Deliberately does not reuse the executive briefing's 4-phase `ThinkingAnimator` — those
+  phases describe report generation specifically and would mislabel a plain chat turn.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

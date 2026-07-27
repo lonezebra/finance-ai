@@ -431,7 +431,7 @@ Add formatter tests that don't require LM Studio to be running.
 payment, savings/investment contribution change, one-time purchase, one-time windfall. Outputs:
 projected snapshot, comparison vs. current, projected decisions, deterministic scenario facts, AI
 explanation. v1 scope notes in `ROADMAP.md` under "Version 0.6" (single-month projection only, no
-persistence, no DTI recalculation on debt payment).
+persistence, no DTI recalculation on debt payment). Desktop UI for this shipped as D5 — see §10.D.
 
 **C. Decision Engine 2.0** — **Done.** Debt-specific payoff candidates (avalanche-ranked),
 emergency-fund target candidate with real dollar gap, investment candidate, goal-funding candidate.
@@ -454,6 +454,27 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   pass (see Known Issues: chat history persistence is not tracked as a gap, just an intentional v1
   scope cut). Deliberately does not reuse the executive briefing's 4-phase `ThinkingAnimator` — those
   phases describe report generation specifically and would mislabel a plain chat turn.
+- D5 (Scenario Planning UI): **Done.** New "Scenario Planning" sidebar page — the first page added
+  outright rather than filling an existing placeholder slot. `ScenarioPresenter` follows the same
+  `attach()`/`detach()` + defensive `tkinter.TclError` pattern as `BriefingPresenter`/`ChatPresenter`,
+  owned by `MainWindow`, but uses a single `on_change()` callback rather than per-event callbacks —
+  its state is a builder (an editable list of adjustments) plus a result plus an AI narrative, closer
+  to "re-render from current state" than the mostly-append-only state the other two presenters track.
+  `ScenarioView` splits into a builder (add/remove `ScenarioAdjustment` rows via a type dropdown,
+  amount, and label, each type captioned with its sign convention since income/expense changes are
+  signed but debt-payment/contribution/purchase/windfall amounts are entered as positive magnitudes)
+  and a results area. "Run Scenario" calls `run_scenario()` synchronously (fast, deterministic, no
+  AI) and renders projected-vs-baseline cards by reusing `report_cards.py`'s existing card builders
+  (`build_changes_card` fed via `interpret_comparison(result.comparison)`, `build_snapshot_card`,
+  `build_decisions_card`) plus two new ones added there (`build_scenario_facts_card`,
+  `build_ai_narrative_card`). "Explain with AI" is a separate, explicit action (background-threaded,
+  same `BackgroundTask` as chat/briefing) that calls `StrategicAdvisor.explain_scenario()` — kept
+  separate from "Run Scenario" itself so the fast deterministic path never blocks on LM Studio.
+  Uses the same lightweight "thinking..." status + indeterminate progress bar as chat, not the
+  briefing's 4-phase animator, for the same reason as D4. Supports multiple adjustments per scenario
+  (the engine already models `Scenario.adjustments` as a list) rather than a single-adjustment v1 —
+  manually verified a compound raise + extra-debt-payment scenario composes correctly against the
+  real demo database.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

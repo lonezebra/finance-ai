@@ -5,6 +5,8 @@ from finance_ai.ui.chat_view import ChatView
 from finance_ai.ui.import_view import ImportView
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter
 from finance_ai.ui.presenters.chat_presenter import ChatPresenter
+from finance_ai.ui.presenters.scenario_presenter import ScenarioPresenter
+from finance_ai.ui.scenario_view import ScenarioView
 
 
 class MainWindow(ctk.CTk):
@@ -26,6 +28,10 @@ class MainWindow(ctk.CTk):
         # Same reasoning as briefing_presenter: owned here so the conversation (and any
         # in-flight reply) survives navigating away and back.
         self.chat_presenter = ChatPresenter()
+
+        # Same reasoning again: the adjustments being built, the last projection, and any
+        # in-flight AI explanation survive navigating away and back.
+        self.scenario_presenter = ScenarioPresenter()
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -52,6 +58,7 @@ class MainWindow(ctk.CTk):
 
         pages = [
             "Executive Briefing",
+            "Scenario Planning",
             "Import Data",
             "Dashboard",
             "Accounts",
@@ -93,6 +100,11 @@ class MainWindow(ctk.CTk):
         view = ChatView(self.content, presenter=self.chat_presenter)
         view.grid(row=0, column=0, sticky="nsew")
 
+    def _show_scenario(self):
+        self._clear_content()
+        view = ScenarioView(self.content, presenter=self.scenario_presenter)
+        view.grid(row=0, column=0, sticky="nsew")
+
     def _show_placeholder(self, name: str):
         if name == "Executive Briefing":
             self._show_briefing()
@@ -104,6 +116,10 @@ class MainWindow(ctk.CTk):
 
         if name == "AI Advisor":
             self._show_chat()
+            return
+
+        if name == "Scenario Planning":
+            self._show_scenario()
             return
 
         self._clear_content()

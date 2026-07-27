@@ -175,6 +175,37 @@ def build_strengths_concerns_card(parent, strengths, concerns) -> ctk.CTkFrame:
     return card
 
 
+def build_scenario_facts_card(parent, facts: list[str]) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Adjustments Applied")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    if not facts:
+        ctk.CTkLabel(body, text="No adjustments applied.", anchor="w").pack(anchor="w", pady=2)
+        return card
+
+    for fact in facts:
+        ctk.CTkLabel(
+            body, text=f"- {fact}", anchor="w", justify="left", wraplength=520
+        ).pack(anchor="w", pady=2)
+
+    return card
+
+
+def build_ai_narrative_card(parent, text: str) -> ctk.CTkFrame:
+    card = _card_frame(parent, "AI Explanation")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    ctk.CTkLabel(body, text=text, anchor="w", justify="left", wraplength=520).pack(
+        anchor="w", pady=2
+    )
+
+    return card
+
+
 def build_decisions_card(parent, decisions) -> ctk.CTkFrame:
     card = _card_frame(parent, "Top Decisions")
     body = ctk.CTkFrame(card, fg_color="transparent")

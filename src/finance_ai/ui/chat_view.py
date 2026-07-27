@@ -9,6 +9,11 @@ ROLE_LABELS = {
     ChatRole.ASSISTANT: "Strategic Advisor",
 }
 
+BUBBLE_COLORS = {
+    ChatRole.USER: ("#CFE3FF", "#274873"),
+    ChatRole.ASSISTANT: ("gray85", "gray25"),
+}
+
 
 class ChatView(ctk.CTkFrame):
     def __init__(self, parent, presenter: ChatPresenter):
@@ -32,10 +37,14 @@ class ChatView(ctk.CTkFrame):
         self.transcript.grid_columnconfigure(0, weight=1)
 
         self.status_label = ctk.CTkLabel(self, text="", anchor="w", text_color="gray60")
-        self.status_label.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 5))
+        self.status_label.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 2))
+
+        self.progress_bar = ctk.CTkProgressBar(self, mode="indeterminate")
+        self.progress_bar.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 5))
+        self.progress_bar.grid_remove()
 
         input_row = ctk.CTkFrame(self, fg_color="transparent")
-        input_row.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 20))
+        input_row.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
         input_row.grid_columnconfigure(0, weight=1)
 
         self.input_box = ctk.CTkEntry(input_row, placeholder_text="Ask a question...")
@@ -75,7 +84,11 @@ class ChatView(ctk.CTkFrame):
         self.presenter.send(text, self.winfo_toplevel())
 
     def _on_message(self, message: ChatMessage):
-        bubble = ctk.CTkFrame(self.transcript, fg_color=("gray86", "gray17"))
+        bubble = ctk.CTkFrame(
+            self.transcript,
+            fg_color=BUBBLE_COLORS[message.role],
+            corner_radius=10,
+        )
         bubble.grid(row=self._transcript_row, column=0, sticky="ew", pady=6)
         bubble.grid_columnconfigure(0, weight=1)
         self._transcript_row += 1
@@ -84,7 +97,7 @@ class ChatView(ctk.CTkFrame):
             bubble,
             text=ROLE_LABELS[message.role],
             font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="gray60",
+            text_color=("gray30", "gray70"),
             anchor="w",
         )
         header.grid(row=0, column=0, sticky="w", padx=12, pady=(8, 0))
@@ -98,12 +111,31 @@ class ChatView(ctk.CTkFrame):
         )
         body.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
 
+        self._scroll_to_bottom()
+
+    def _scroll_to_bottom(self):
+        # CTkScrollableFrame has no public "scroll to bottom" API; _parent_canvas is the
+        # plain tkinter.Canvas underneath it, confirmed present in the installed
+        # customtkinter version. Guarded so a version mismatch degrades to "no
+        # auto-scroll" instead of crashing message rendering.
+        try:
+            canvas = self.transcript._parent_canvas
+            self.transcript.update_idletasks()
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.yview_moveto(1.0)
+        except AttributeError:
+            pass
+
     def _on_thinking_change(self, thinking: bool):
         if thinking:
             self.status_label.configure(text="Strategic Advisor is thinking...")
+            self.progress_bar.grid()
+            self.progress_bar.start()
             self.send_button.configure(state="disabled")
             self.input_box.configure(state="disabled")
         else:
             self.status_label.configure(text="")
+            self.progress_bar.stop()
+            self.progress_bar.grid_remove()
             self.send_button.configure(state="normal")
             self.input_box.configure(state="normal")

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 
-#from finance_ai.decision.scoring import decision_score
+from finance_ai.decision.scoring import decision_score
 
 
 class DecisionPriority(str, Enum):
@@ -28,7 +28,11 @@ class FinancialDecision:
     expected_impact_score: float
     confidence_score: float
 
-    difficulty_score: float
+    # How easy this decision is to actually carry out, as a multiplier: 1.0 is
+    # frictionless, lower values mean more effort or disruption. Previously named
+    # difficulty_score, which read backwards -- a *higher* value makes a decision rank
+    # *higher*, so the number was always measuring ease, not difficulty.
+    ease_multiplier: float
 
     time_horizon: TimeHorizon
 
@@ -38,9 +42,11 @@ class FinancialDecision:
 
     @property
     def score(self) -> float:
-        from finance_ai.decision.scoring import decision_score
-
-        return decision_score(self)
+        return decision_score(
+            self.expected_impact_score,
+            self.confidence_score,
+            self.ease_multiplier,
+        )
 
 @dataclass(frozen=True)
 class DecisionSet:

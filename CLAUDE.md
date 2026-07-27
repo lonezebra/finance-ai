@@ -259,12 +259,24 @@ debt, expenses, DTI. These are heuristics, not universal truths.
 
 ### Decision Engine
 `FinancialDecision(title, description, priority, expected_impact_score, confidence_score,
-difficulty_score, time_horizon, reasoning, reversible)`, ranked into a `DecisionSet`.
-Score = expected_impact × confidence × difficulty("ease") multiplier.
+ease_multiplier, time_horizon, reasoning, reversible)`, ranked into a `DecisionSet`.
+Score = expected_impact × (confidence / 100) × ease_multiplier.
 Rules: emergency fund < 3mo → build it; DTI > 36% → reduce debt; negative cash flow → stabilize;
 positive cash flow + 6mo+ EF + DTI ≤25% → optimize capital allocation; else → maintain plan.
-*Known debt:* `FinancialDecision.score` imports scoring inside a property to dodge a circular
-import — fine for now, don't stop feature work to fix it.
+**Both pieces of known debt here are resolved:**
+- *Renamed `difficulty_score` → `ease_multiplier`.* The old name read backwards: the value is a
+  multiplier where **higher ranks a decision higher**, so it was always measuring ease, not
+  difficulty. Engine values are unchanged (0.5–1.0), so scores are byte-identical — verified
+  against the demo database.
+- *Circular import removed.* `decision_score()` now takes three plain numbers
+  (`expected_impact_score`, `confidence_score`, `ease_multiplier`) instead of a `FinancialDecision`,
+  so `scoring.py` imports nothing from `models.py` and the dependency runs one way only
+  (models → scoring). `FinancialDecision.score` therefore imports `decision_score` at module level
+  like anything else, instead of doing a function-local import to dodge the cycle. The `.score`
+  property itself was **kept deliberately** — it's a genuinely derived value with four call sites
+  (`decision/engine.py`'s sort, both formatters, `report_cards.py`), and deleting it would just
+  push the same computation into each caller. The debt was the cycle workaround, not the property.
+  `tests/test_decision_scoring.py` includes a regression guard that fails if the cycle returns.
 
 ### Executive Report Engine
 `ExecutiveReport(month, snapshot, important_changes, strengths, concerns, recommended_focus,

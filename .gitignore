@@ -4,7 +4,17 @@ __pycache__/
 .DS_Store
 .env
 
-data/finance.db
+# Databases -- pattern-based, not an exact filename. An earlier exact-filename rule
+# ("data/finance.db") let a macOS duplicate-save artifact named "data/finance 2.db" slip
+# through and get committed. Any .db/.sqlite anywhere is user financial data and must
+# never be committed; see known issue #8 in CLAUDE.md.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
 data/imports/*
 data/exports/*
 backups/*
@@ -14,6 +24,11 @@ reports/*
 *.xlsx
 *.xls
 *.csv
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
 
 !data/imports/.gitkeep
 !data/exports/.gitkeep

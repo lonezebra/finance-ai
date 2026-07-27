@@ -400,7 +400,24 @@ rather than deferring to one giant hardening pass.
 6. **Done** — `ai/background.py`'s `BackgroundTask` + `ai/thinking.py`'s `ThinkingAnimator`, wired
    into `BriefingView`/`BriefingPresenter`.
 7. **Done** — see `ai/errors.py::describe_ai_error()`.
-8. Guarantee no personal financial data is ever committed to git
+8. **Largely done — audited before the private→public flip.** Full-history audit
+   (`git log --all --diff-filter=A`) found exactly one database file ever committed:
+   `data/finance 2.db`, a macOS duplicate-save artifact that slipped past the old
+   exact-filename `data/finance.db` ignore rule (the space in the name meant it didn't
+   match). **Verified empty — 0 rows across all 10 tables in the committed blob, not just
+   the working copy — so no financial data was ever exposed.** It has been removed from the
+   tree, along with stray `src/UNKNOWN.egg-info/` build artifacts. `.gitignore` is now
+   pattern-based (`*.db`, `*.sqlite`, `*.egg-info/`, …) rather than naming one exact file,
+   so a renamed or duplicated database can't slip through the same way again. Also audited
+   clean: no `.env` files, no `.xlsx`/`.csv` data files (only the committed
+   `finance_template.xlsx`), and no credentials — the sole `API_KEY` in the codebase is
+   `LM_STUDIO_API_KEY = "lm-studio"`, the placeholder LM Studio requires and ignores, not a
+   real secret. **Deliberately not history-rewritten:** purging the old commit would break
+   every existing clone/fork and rewrite all downstream hashes, which is disproportionate
+   for a provably empty file. *Remaining nit (cosmetic, not a leak):* `CLAUDE.md` §6 and
+   `docs/COMMANDS.md` hardcode `/Users/lonezebra/...` dev paths — the username matches the
+   public GitHub handle so nothing new is revealed, but they read as noise to anyone who
+   clones the repo.
 
 **Medium priority:** consolidate Opportunity + Decision engines; rename `difficulty_score` to
 something like an ease/feasibility multiplier; move decision scoring out of the model property;

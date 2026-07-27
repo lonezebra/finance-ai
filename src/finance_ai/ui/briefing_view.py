@@ -1,6 +1,13 @@
 import customtkinter as ctk
 
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter, BriefingRequestState
+from finance_ai.ui.presenters.executive_report_presenter import ExecutiveReportPresenter
+from finance_ai.ui.report_cards import (
+    build_changes_card,
+    build_decisions_card,
+    build_snapshot_card,
+    build_strengths_concerns_card,
+)
 
 PLACEHOLDER_TEXT = "Click \"Generate Briefing\" to get your AI-powered executive briefing."
 
@@ -10,9 +17,14 @@ class BriefingView(ctk.CTkFrame):
         super().__init__(parent)
 
         self.presenter = presenter
+        self.report_presenter = ExecutiveReportPresenter()
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        # Cards (row 1) and the AI narrative textbox (row 4) split the available vertical
+        # space evenly. Previously only row 4 had weight, so the cards region was pinned to
+        # its construction-time height (260px) regardless of window size -- it never grew.
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(4, weight=1)
 
         title = ctk.CTkLabel(
             self,
@@ -21,23 +33,25 @@ class BriefingView(ctk.CTkFrame):
         )
         title.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 10))
 
+        self._build_cards()
+
         self.status_label = ctk.CTkLabel(self, text="", anchor="w")
-        self.status_label.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 5))
+        self.status_label.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 5))
 
         self.progress_bar = ctk.CTkProgressBar(self)
         self.progress_bar.set(0)
-        self.progress_bar.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 5))
+        self.progress_bar.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 5))
         self.progress_bar.grid_remove()
 
         self.textbox = ctk.CTkTextbox(self, wrap="word")
-        self.textbox.grid(row=3, column=0, sticky="nsew", padx=20, pady=10)
+        self.textbox.grid(row=4, column=0, sticky="nsew", padx=20, pady=10)
 
         self.generate_button = ctk.CTkButton(
             self,
             text="Generate Briefing",
             command=self.generate,
         )
-        self.generate_button.grid(row=4, column=0, sticky="ew", padx=20, pady=(10, 20))
+        self.generate_button.grid(row=5, column=0, sticky="ew", padx=20, pady=(10, 20))
 
         self.bind("<Destroy>", self._on_destroy)
 
@@ -57,6 +71,27 @@ class BriefingView(ctk.CTkFrame):
             on_success=self._on_success,
             on_error=self._on_error,
         )
+
+    def _build_cards(self):
+        report = self.report_presenter.get_report()
+
+        cards_frame = ctk.CTkScrollableFrame(self)
+        cards_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 10))
+        cards_frame.grid_columnconfigure(0, weight=1)
+
+        snapshot_card = build_snapshot_card(cards_frame, report.snapshot)
+        snapshot_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+
+        changes_card = build_changes_card(cards_frame, report.important_changes)
+        changes_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+
+        strengths_card = build_strengths_concerns_card(
+            cards_frame, report.strengths, report.concerns
+        )
+        strengths_card.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+
+        decisions_card = build_decisions_card(cards_frame, report.top_decisions)
+        decisions_card.grid(row=3, column=0, sticky="ew", pady=(0, 10))
 
     def _on_destroy(self, event):
         if event.widget is self:

@@ -1,13 +1,36 @@
+from datetime import datetime
+
 from finance_ai.decision.engine import generate_decisions_from_db
+from finance_ai.finance.metrics import create_financial_snapshot
 from finance_ai.history.comparison import compare_snapshots
-from finance_ai.history.engine import get_previous_snapshot, save_snapshot
+from finance_ai.history.engine import get_latest_snapshot, get_previous_snapshot, save_snapshot
 from finance_ai.history.interpreter import ChangeSignificance, interpret_comparison
+from finance_ai.history.models import SnapshotRecord
 from finance_ai.reports.models import ExecutiveReport
 
 
-def create_executive_report(month: str) -> ExecutiveReport:
-    current_record = save_snapshot(month)
-    previous_record = get_previous_snapshot()
+def create_executive_report(month: str, persist: bool = True) -> ExecutiveReport:
+    """Builds an ExecutiveReport for month.
+
+    persist=True (the default, used by "Generate Briefing") saves a new snapshot to
+    financial_snapshot_records and compares it against the one before it -- an explicit
+    check-in worth recording in history.
+
+    persist=False computes the snapshot fresh without writing anything, and compares it
+    against whatever was last saved. This is for read paths that render on every page visit
+    (e.g. the briefing's summary cards) -- those must not multiply duplicate snapshot rows
+    just from being viewed.
+    """
+    if persist:
+        current_record = save_snapshot(month)
+        previous_record = get_previous_snapshot()
+    else:
+        current_record = SnapshotRecord(
+            id=None,
+            created_at=datetime.now(),
+            snapshot=create_financial_snapshot(month),
+        )
+        previous_record = get_latest_snapshot()
 
     important_changes = []
 

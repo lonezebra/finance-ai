@@ -78,7 +78,7 @@ def generate_decisions(
                 priority=DecisionPriority.HIGH,
                 expected_impact_score=85,
                 confidence_score=90,
-                difficulty_score=0.7,
+                ease_multiplier=0.7,
                 time_horizon=TimeHorizon.SHORT_TERM,
                 reasoning="Debt-to-income ratio is above the preferred threshold.",
             )
@@ -92,7 +92,7 @@ def generate_decisions(
                 priority=DecisionPriority.CRITICAL,
                 expected_impact_score=100,
                 confidence_score=95,
-                difficulty_score=0.7,
+                ease_multiplier=0.7,
                 time_horizon=TimeHorizon.IMMEDIATE,
                 reasoning="Monthly cash flow is negative.",
             )
@@ -116,7 +116,7 @@ def generate_decisions(
                 priority=DecisionPriority.LOW,
                 expected_impact_score=30,
                 confidence_score=80,
-                difficulty_score=1.0,
+                ease_multiplier=1.0,
                 time_horizon=TimeHorizon.SHORT_TERM,
                 reasoning="No urgent decision surfaced from the current financial snapshot.",
             )
@@ -145,7 +145,7 @@ def _emergency_fund_decision(snapshot) -> FinancialDecision:
         priority=DecisionPriority.CRITICAL,
         expected_impact_score=95,
         confidence_score=95,
-        difficulty_score=0.8,
+        ease_multiplier=0.8,
         time_horizon=TimeHorizon.SHORT_TERM,
         reasoning=(
             f"Emergency fund coverage is {format_months(snapshot.emergency_fund_months)}, below "
@@ -165,7 +165,7 @@ def _capital_allocation_decision(snapshot) -> FinancialDecision:
         priority=DecisionPriority.MEDIUM,
         expected_impact_score=75,
         confidence_score=85,
-        difficulty_score=0.6,
+        ease_multiplier=0.6,
         time_horizon=TimeHorizon.LONG_TERM,
         reasoning="Cash flow is positive, emergency reserves are strong, and debt levels are conservative.",
     )
@@ -196,7 +196,7 @@ def _debt_payoff_decisions(snapshot, debts: list[DebtSummary]) -> list[Financial
                 priority=DecisionPriority.HIGH if high_interest else DecisionPriority.MEDIUM,
                 expected_impact_score=impact,
                 confidence_score=95,
-                difficulty_score=0.7,
+                ease_multiplier=0.7,
                 time_horizon=TimeHorizon.SHORT_TERM,
                 reasoning=(
                     f"{debt.name} carries a {debt.interest_rate:.2f}% interest rate, the basis "
@@ -247,7 +247,7 @@ def _goal_funding_decisions(
                     priority=DecisionPriority.MEDIUM,
                     expected_impact_score=60,
                     confidence_score=85,
-                    difficulty_score=1.0,
+                    ease_multiplier=1.0,
                     time_horizon=time_horizon,
                     reasoning=(
                         f"{format_currency(remaining)} remains for {goal.name} with "
@@ -268,7 +268,7 @@ def _goal_funding_decisions(
                     priority=DecisionPriority.MEDIUM,
                     expected_impact_score=80,
                     confidence_score=85,
-                    difficulty_score=0.5,
+                    ease_multiplier=0.5,
                     time_horizon=time_horizon,
                     reasoning=(
                         "Required contribution exceeds available monthly cash flow, so this goal "

@@ -99,7 +99,7 @@ def test_formatter_lists_top_decisions_with_reasoning():
         priority=DecisionPriority.MEDIUM,
         expected_impact_score=75,
         confidence_score=85,
-        difficulty_score=0.6,
+        ease_multiplier=0.6,
         time_horizon=TimeHorizon.LONG_TERM,
         reasoning="Cash flow is positive, emergency reserves are strong, and debt is conservative.",
     )

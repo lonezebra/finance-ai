@@ -39,6 +39,51 @@ Your financial data remains on your computer.
 
 ---
 
+# Getting Started
+
+## Requirements
+
+- Python 3.12+ (an official python.org build — on macOS, Homebrew Python lacks `_tkinter` and breaks the desktop UI)
+- [uv](https://docs.astral.sh/uv/) for dependency management
+- [LM Studio](https://lmstudio.ai/), running locally with a model loaded, for the AI-powered features (Executive Briefing narrative, AI Advisor chat, scenario explanations). Everything else works without it.
+
+## Install
+
+```bash
+git clone <this-repo-url>
+cd finance-ai
+uv sync --dev
+```
+
+## Set up the database
+
+```bash
+make init-db
+```
+
+## Try it with demo data
+
+```bash
+make import-demo
+make run
+```
+
+`make run` launches the desktop app. From there:
+
+- **Import Data** — bring in your own Excel workbook (a starter template lives at `data/exports/finance_template.xlsx`)
+- **Executive Briefing** — your financial snapshot plus an AI-generated narrative (requires LM Studio running)
+- **AI Advisor** — ask an ongoing chat about your finances (requires LM Studio running)
+
+## Run the tests
+
+```bash
+make test
+```
+
+See `make help` for the full list of available commands.
+
+---
+
 # Philosophy
 
 Open CFO is built around four core principles.
@@ -82,7 +127,8 @@ Open CFO provides structured Excel templates that can be:
 
 ## AI Explains
 
-Open CFO uses **Qwen 3.6** running locally through **LM Studio**.
+Open CFO talks to a local model through **LM Studio**. The AI Runtime is model-agnostic — any
+model LM Studio can serve works; swap models without touching the rest of the application.
 
 The AI does **not** perform financial calculations.
 
@@ -123,7 +169,7 @@ Excel / CSV
  Executive Briefing
       │
       ▼
- AI Advisor (Qwen)
+ AI Advisor (local model via LM Studio)
 ```
 
 ---
@@ -132,15 +178,18 @@ Excel / CSV
 
 - Local-first architecture
 - SQLite financial database
-- Structured Excel import pipeline
+- Structured Excel import pipeline, including idempotent re-import (upsert by natural key for
+  accounts/categories/debts/assets/budgets/goals; exact-match duplicate detection for transactions)
 - Workbook validation
-- Financial Snapshot engine
-- Financial Health engine
-- Financial Confidence engine
-- Decision Engine
-- Executive Briefing
-- Local AI Runtime
-- Strategic Advisor (LM Studio)
+- Financial Snapshot, Health, and Confidence engines
+- Decision Engine (debt payoff, emergency fund, investment, and goal-funding candidates)
+- Scenario Engine (income/expense changes, extra debt payments, contribution changes, one-time
+  purchases/windfalls) — engine and AI explanation are done; no desktop UI for it yet, see Planned
+- Executive Briefing (deterministic snapshot cards plus an AI-generated narrative)
+- Desktop app (CustomTkinter): Executive Briefing, Import Data, and AI Advisor chat are functional;
+  Dashboard, Accounts, Transactions, Debt, Assets, Budget, Goals, Reports, and Settings are still
+  placeholders
+- Local AI Runtime and Strategic Advisor (LM Studio), including a multi-turn chat
 - Prompt Library
 - Thinking state framework
 - Automated tests
@@ -149,38 +198,21 @@ Excel / CSV
 
 # Planned Features
 
-## Version 0.2
+## Versions 0.2–0.6 — done
 
-- Excel validation
-- Workbook import
-- Import reports
-- Audit logging
+Excel import and validation with idempotent re-import, the desktop shell, the Strategic Advisor
+(including the chat above), the Financial History Engine, and the Scenario Engine backend.
 
-## Version 0.3
+## Version 0.7 — in progress (public beta readiness)
 
-Desktop Shell
-
-## Version 0.4
-
-Strategic Advisor
-Prompt Library
-Executive Narrative
-
-## Version 0.5
-
-Financial History Engine
-
-## Version 0.6
-
-Scenario Planning
-
-## Version 0.7
-
-Dashboard
+- Scenario Planning desktop UI (the engine already exists; no page to use it from yet)
+- Surface the Financial Confidence Score somewhere in the app (computed today, but not shown)
+- Dashboard and the remaining placeholder pages (Accounts, Transactions, Debt, Assets, Budget,
+  Goals, Reports, Settings)
 
 ## Version 1.0
 
-Open CFO release
+Open CFO public beta release
 
 ---
 

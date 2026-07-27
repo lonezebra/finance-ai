@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from finance_ai.finance.metrics import FinancialSnapshot, create_financial_snapshot
+from finance_ai.finance.thresholds import DTI_CONSERVATIVE, DTI_ELEVATED, DTI_HIGH
 
 
 @dataclass(frozen=True)
@@ -71,18 +72,34 @@ def calculate_financial_health_from_snapshot(snapshot: FinancialSnapshot) -> Fin
         issues.append(
             HealthIssue(
                 "medium",
-                "Debt-to-income ratio can't be assessed without recorded income.",
+                "Debt payments can't be assessed as a share of income "
+                "without recorded income.",
             )
         )
-    elif snapshot.debt_to_income_ratio > 0.50:
+    elif snapshot.debt_to_income_ratio > DTI_HIGH:
         score -= 20
-        issues.append(HealthIssue("high", "Debt-to-income ratio is above 50%."))
-    elif snapshot.debt_to_income_ratio > 0.36:
+        issues.append(
+            HealthIssue(
+                "high",
+                f"Debt payments are above {DTI_HIGH:.0%} of take-home income.",
+            )
+        )
+    elif snapshot.debt_to_income_ratio > DTI_ELEVATED:
         score -= 10
-        issues.append(HealthIssue("medium", "Debt-to-income ratio is above 36%."))
-    elif snapshot.debt_to_income_ratio > 0.25:
+        issues.append(
+            HealthIssue(
+                "medium",
+                f"Debt payments are above {DTI_ELEVATED:.0%} of take-home income.",
+            )
+        )
+    elif snapshot.debt_to_income_ratio > DTI_CONSERVATIVE:
         score -= 5
-        issues.append(HealthIssue("low", "Debt-to-income ratio is above 25%."))
+        issues.append(
+            HealthIssue(
+                "low",
+                f"Debt payments are above {DTI_CONSERVATIVE:.0%} of take-home income.",
+            )
+        )
 
     # Negative net worth was previously a flat -15 cliff: -$1 and -$500,000 cost exactly
     # the same. Scaled against annual income instead, the standard reference point for

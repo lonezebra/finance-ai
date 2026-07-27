@@ -27,7 +27,7 @@ Monthly Expenses: {format_currency(snapshot.monthly_expenses)}
 Monthly Cash Flow: {format_currency(snapshot.monthly_cash_flow)}
 
 Savings Rate: {format_percent(snapshot.savings_rate)}
-Debt-to-Income Ratio: {format_percent(snapshot.debt_to_income_ratio)}
+Debt-to-Income Ratio (take-home): {format_percent(snapshot.debt_to_income_ratio)}
 Emergency Fund Coverage: {format_months(snapshot.emergency_fund_months)}
 """.strip()
 

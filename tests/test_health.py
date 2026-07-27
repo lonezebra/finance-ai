@@ -1,5 +1,6 @@
 from finance_ai.finance.health import calculate_financial_health_from_snapshot
 from finance_ai.finance.metrics import FinancialSnapshot
+from finance_ai.finance.thresholds import DTI_CONSERVATIVE, DTI_ELEVATED, DTI_HIGH
 
 
 def make_snapshot(**overrides) -> FinancialSnapshot:
@@ -81,11 +82,40 @@ def test_six_months_of_emergency_fund_is_not_penalized():
 
 
 def test_debt_to_income_tiers_are_ordered():
-    over_50 = calculate_financial_health_from_snapshot(make_snapshot(debt_to_income_ratio=0.60))
-    over_36 = calculate_financial_health_from_snapshot(make_snapshot(debt_to_income_ratio=0.40))
-    over_25 = calculate_financial_health_from_snapshot(make_snapshot(debt_to_income_ratio=0.30))
+    # Derived from the threshold constants rather than hardcoded, so re-baselining the bands
+    # can't leave this test silently asserting the wrong tiers.
+    over_high = calculate_financial_health_from_snapshot(
+        make_snapshot(debt_to_income_ratio=DTI_HIGH + 0.05)
+    )
+    over_elevated = calculate_financial_health_from_snapshot(
+        make_snapshot(debt_to_income_ratio=DTI_ELEVATED + 0.05)
+    )
+    over_conservative = calculate_financial_health_from_snapshot(
+        make_snapshot(debt_to_income_ratio=DTI_CONSERVATIVE + 0.05)
+    )
 
-    assert over_50.score < over_36.score < over_25.score < 100
+    assert over_high.score < over_elevated.score < over_conservative.score < 100
+
+
+def test_debt_at_the_conservative_band_is_not_penalized():
+    result = calculate_financial_health_from_snapshot(
+        make_snapshot(debt_to_income_ratio=DTI_CONSERVATIVE)
+    )
+
+    assert result.score == 100
+    assert not any("Debt payments" in issue.message for issue in result.issues)
+
+
+def test_bands_are_calibrated_for_take_home_not_gross_income():
+    """The conventional 36% lender band is defined on gross income. Open CFO's income figure
+    is take-home, so a burden at 36% of take-home is materially lighter than 36% of gross and
+    should no longer be flagged as elevated."""
+
+    result = calculate_financial_health_from_snapshot(make_snapshot(debt_to_income_ratio=0.36))
+
+    assert not any("elevated" in issue.message.lower() for issue in result.issues)
+    # It's above the conservative band, so it's still worth a low-severity mention.
+    assert any(issue.severity == "low" for issue in result.issues)
 
 
 def test_zero_income_flags_dti_as_unmeasurable_rather_than_silently_passing():
@@ -99,7 +129,7 @@ def test_zero_income_flags_dti_as_unmeasurable_rather_than_silently_passing():
     )
 
     assert any(
-        "can't be assessed without recorded income" in issue.message for issue in result.issues
+        "can't be assessed" in issue.message for issue in result.issues
     )
 
 

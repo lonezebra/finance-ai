@@ -42,7 +42,7 @@ def format_scenario_for_ai(result: ScenarioResult) -> str:
     lines.append(f"- Monthly Expenses: {format_currency(snapshot.monthly_expenses)}")
     lines.append(f"- Monthly Cash Flow: {format_currency(snapshot.monthly_cash_flow)}")
     lines.append(f"- Savings Rate: {format_percent(snapshot.savings_rate)}")
-    lines.append(f"- Debt-to-Income Ratio: {format_percent(snapshot.debt_to_income_ratio)}")
+    lines.append(f"- Debt-to-Income Ratio (take-home): {format_percent(snapshot.debt_to_income_ratio)}")
     lines.append(f"- Emergency Fund: {format_months(snapshot.emergency_fund_months)}")
 
     lines.append("")

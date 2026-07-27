@@ -3,6 +3,7 @@ from datetime import datetime
 from finance_ai.decision.engine import generate_decisions_from_db
 from finance_ai.finance.confidence import calculate_financial_confidence_score
 from finance_ai.finance.metrics import create_financial_snapshot
+from finance_ai.finance.thresholds import DTI_CONSERVATIVE, DTI_ELEVATED
 from finance_ai.history.comparison import compare_snapshots
 from finance_ai.history.engine import get_latest_snapshot, get_previous_snapshot, save_snapshot
 from finance_ai.history.interpreter import ChangeSignificance, interpret_comparison
@@ -68,8 +69,8 @@ def _identify_strengths(snapshot):
     if snapshot.emergency_fund_months >= 6:
         strengths.append("Emergency fund exceeds 6 months of expenses.")
 
-    if snapshot.debt_to_income_ratio <= 0.25:
-        strengths.append("Debt-to-income ratio is conservative.")
+    if snapshot.debt_to_income_ratio <= DTI_CONSERVATIVE:
+        strengths.append("Debt payments are a conservative share of take-home income.")
 
     if snapshot.net_worth > 0:
         strengths.append("Net worth is positive.")
@@ -86,8 +87,8 @@ def _identify_concerns(snapshot):
     if snapshot.emergency_fund_months < 3:
         concerns.append("Emergency fund is below 3 months of expenses.")
 
-    if snapshot.debt_to_income_ratio > 0.36:
-        concerns.append("Debt-to-income ratio is elevated.")
+    if snapshot.debt_to_income_ratio > DTI_ELEVATED:
+        concerns.append("Debt payments are an elevated share of take-home income.")
 
     return concerns
 
@@ -99,7 +100,7 @@ def _recommended_focus(snapshot):
     if snapshot.emergency_fund_months < 3:
         return "Build emergency fund."
 
-    if snapshot.debt_to_income_ratio > 0.36:
+    if snapshot.debt_to_income_ratio > DTI_ELEVATED:
         return "Reduce debt burden."
 
     return "Optimize capital allocation."

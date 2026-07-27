@@ -162,3 +162,34 @@ def test_interpreter_marks_cash_balance_large_increase_as_high_significance():
 
     assert cash_change.direction == ChangeDirection.IMPROVED
     assert cash_change.significance == ChangeSignificance.HIGH
+
+def test_every_compared_metric_is_classified_by_direction():
+    """comparison.py maps snapshot fields to display labels, and interpreter.py decides
+    better-when-increasing vs better-when-decreasing by matching those same label *strings*.
+    A metric present in one and not the other silently falls through _direction()'s
+    ChangeDirection.NEUTRAL fallback -- so a real regression (e.g. debt increasing but no
+    longer reported as worsened) would produce no error, just wrong output.
+
+    This guards the coupling: renaming a label or adding a metric must touch both sides.
+    """
+
+    from finance_ai.history.comparison import METRICS_TO_COMPARE
+    from finance_ai.history.interpreter import IMPROVES_WHEN_DECREASED, IMPROVES_WHEN_INCREASED
+
+    labels = set(METRICS_TO_COMPARE.values())
+    classified = IMPROVES_WHEN_INCREASED | IMPROVES_WHEN_DECREASED
+
+    assert labels - classified == set(), (
+        "these compared metrics are not classified in interpreter.py and would be "
+        f"silently reported as neutral: {sorted(labels - classified)}"
+    )
+    # And nothing is classified that isn't actually compared, which would be dead config.
+    assert classified - labels == set(), (
+        f"these classified labels no longer match any compared metric: {sorted(classified - labels)}"
+    )
+
+
+def test_a_metric_cannot_be_classified_in_both_directions():
+    from finance_ai.history.interpreter import IMPROVES_WHEN_DECREASED, IMPROVES_WHEN_INCREASED
+
+    assert IMPROVES_WHEN_INCREASED & IMPROVES_WHEN_DECREASED == set()

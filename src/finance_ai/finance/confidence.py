@@ -1,9 +1,16 @@
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
+from datetime import date
 
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from finance_ai.db.database import SessionLocal
 from finance_ai.db.models import Account, Asset, Budget, Category, Debt, Goal, Transaction
+
+STALE_AFTER_DAYS = 30
+VERY_STALE_AFTER_DAYS = 90
 
 
 @dataclass(frozen=True)
@@ -32,11 +39,24 @@ def _count(session, model) -> int:
     return int(session.query(func.count(model.id)).scalar() or 0)
 
 
-def calculate_financial_confidence_score() -> FinancialConfidenceScore:
+def calculate_financial_confidence_score(
+    today: date | None = None,
+    session_factory: Callable[[], AbstractContextManager[Session]] = SessionLocal,
+) -> FinancialConfidenceScore:
+    """Measures how complete and up to date the data behind Open CFO's numbers is -- not
+    financial health. A full, well-categorized dataset scores high even if the user's
+    finances themselves look concerning; a sparse or stale one scores low even if the
+    numbers it does show look great.
+
+    today defaults to the real current date; tests pass a fixed date so "how many days
+    since the last transaction" doesn't depend on when the test happens to run.
+    """
+
+    today = today or date.today()
     issues: list[ConfidenceIssue] = []
     score = 100
 
-    with SessionLocal() as session:
+    with session_factory() as session:
         account_count = _count(session, Account)
         transaction_count = _count(session, Transaction)
         category_count = _count(session, Category)
@@ -52,6 +72,30 @@ def calculate_financial_confidence_score() -> FinancialConfidenceScore:
         if transaction_count == 0:
             score -= 20
             issues.append(ConfidenceIssue("high", "No transactions have been imported."))
+        else:
+            most_recent_date = session.query(func.max(Transaction.transaction_date)).scalar()
+
+            if most_recent_date is not None:
+                days_since_last_transaction = (today - most_recent_date).days
+
+                if days_since_last_transaction > VERY_STALE_AFTER_DAYS:
+                    score -= 20
+                    issues.append(
+                        ConfidenceIssue(
+                            "high",
+                            f"No transactions in {days_since_last_transaction} days -- this "
+                            "data may no longer reflect your current financial position.",
+                        )
+                    )
+                elif days_since_last_transaction > STALE_AFTER_DAYS:
+                    score -= 10
+                    issues.append(
+                        ConfidenceIssue(
+                            "medium",
+                            f"No transactions in {days_since_last_transaction} days -- "
+                            "consider importing more recent activity.",
+                        )
+                    )
 
         if category_count == 0:
             score -= 10

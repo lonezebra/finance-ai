@@ -203,7 +203,17 @@ Calculations:
 Measures data completeness/trustworthiness, **not** wealth. Starts at 100, subtracts for missing
 accounts/transactions/categories/budgets/debts/assets/goals and for uncategorized transactions or
 debts missing interest rates. Labels: 90+ High, 70–89 Moderate, 50–69 Low, <50 Very Low.
-*Known weakness:* demo data scores 100/100 despite being sparse — needs freshness/coverage signals.
+**Done — data-freshness signal added:** `calculate_financial_confidence_score()` now also checks
+how many days old the most recent transaction is (`today` is an injectable parameter, defaulting
+to the real current date, so tests aren't tied to when they happen to run) — over
+`STALE_AFTER_DAYS` (30) subtracts 10 with a medium-severity issue, over `VERY_STALE_AFTER_DAYS`
+(90) subtracts 20 with a high-severity one. Only checked when transactions exist at all (the
+existing "no transactions" check already covers the zero case, so the two don't double-penalize
+the same underlying problem), and based on the single most recent transaction, not the oldest, so
+one fresh import doesn't get dragged down by unrelated old history. This directly fixes the
+previously-documented known weakness: the demo data (transactions dated 2026-06) now correctly
+scores below 100 when evaluated against a later real-world date, rather than reading as fully
+confident despite being stale.
 **Done — now surfaced in the UI:** `ExecutiveReport.confidence` (`reports/models.py`) carries a
 `FinancialConfidenceScore`, populated by `create_executive_report()` via
 `calculate_financial_confidence_score()`. Shown as the first card in the Executive Briefing
@@ -404,10 +414,10 @@ rather than deferring to one giant hardening pass.
 
 **Medium priority:** consolidate Opportunity + Decision engines; rename `difficulty_score` to
 something like an ease/feasibility multiplier; move decision scoring out of the model property;
-add data-freshness signal to Confidence Score; improve Health Score weighting; essential-expense-only
-emergency fund calc; avoid asset/account double counting; better DTI methodology (gross vs net
-income); audit-log integration (import batch integration is done — see §10.D); database backup &
-restore.
+**data-freshness signal for Confidence Score — done, see §5**; improve Health Score weighting;
+essential-expense-only emergency fund calc; avoid asset/account double counting; better DTI
+methodology (gross vs net income); audit-log integration (import batch integration is done — see
+§10.D); database backup & restore.
 
 **Lower priority / later release:** Ollama provider adapter; cross-platform packaging; Windows
 verification; bank API integration; investment analytics; retirement readiness; tax/insurance modules.

@@ -1,9 +1,24 @@
+from datetime import datetime
+
 from finance_ai.db.database import SessionLocal
-from finance_ai.db.models import Account, Asset, Budget, Category, Debt, Goal, Transaction
+from finance_ai.db.models import (
+    Account,
+    Asset,
+    Budget,
+    Category,
+    Debt,
+    Goal,
+    ImportBatch,
+    Transaction,
+)
 from finance_ai.imports.mapper import ImportDataset
 
 
-def import_dataset(dataset: ImportDataset) -> dict[str, int]:
+def import_dataset(
+    dataset: ImportDataset,
+    source_file: str,
+    source_type: str = "excel",
+) -> dict[str, int]:
     imported_counts = {
         "accounts": 0,
         "categories": 0,
@@ -101,6 +116,16 @@ def import_dataset(dataset: ImportDataset) -> dict[str, int]:
                 )
                 session.add(goal)
                 imported_counts["goals"] += 1
+
+            session.add(
+                ImportBatch(
+                    imported_at=datetime.now(),
+                    source_file=source_file,
+                    source_type=source_type,
+                    status="completed",
+                    notes=f"Imported {sum(imported_counts.values())} records.",
+                )
+            )
 
             session.commit()
             return imported_counts

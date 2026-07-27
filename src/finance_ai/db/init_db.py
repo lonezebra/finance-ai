@@ -1,10 +1,8 @@
-from finance_ai.db import models  # noqa: F401
-from finance_ai.db.database import Base, get_engine
+from finance_ai.db.migrate import ensure_schema_up_to_date
 
 
 def init_db():
-    engine = get_engine()
-    Base.metadata.create_all(engine)
+    ensure_schema_up_to_date()
     print("Database initialized.")
 
 

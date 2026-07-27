@@ -1,11 +1,13 @@
-.PHONY: help activate test reset-db init-db import-demo briefing run status push
+.PHONY: help activate test reset-db init-db db-migrate db-upgrade import-demo briefing run status push
 
 help:
 	@echo "Open CFO development commands"
 	@echo ""
 	@echo "make test        Run tests"
-	@echo "make init-db     Initialize database"
-	@echo "make reset-db    Delete and recreate database"
+	@echo "make init-db     Initialize database (creates it fresh, or migrates an existing one)"
+	@echo "make reset-db    Delete the database file and recreate it via migrations"
+	@echo "make db-migrate  Generate a new migration from model changes (message=\"...\")"
+	@echo "make db-upgrade  Apply any pending migrations without deleting existing data"
 	@echo "make import-demo Import demo Excel workbook"
 	@echo "make briefing    Print Open CFO briefing"
 	@echo "make status      Show git status"
@@ -20,6 +22,12 @@ init-db:
 
 reset-db:
 	rm -f data/finance.db
+	PYTHONPATH=src python -m finance_ai.db.init_db
+
+db-migrate:
+	PYTHONPATH=src alembic revision --autogenerate -m "$(message)"
+
+db-upgrade:
 	PYTHONPATH=src python -m finance_ai.db.init_db
 
 import-demo:

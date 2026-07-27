@@ -6,9 +6,11 @@ from finance_ai.imports.errors import describe_import_error
 from finance_ai.ui.presenters.import_presenter import ImportPresenter, ImportPreview
 
 IDEMPOTENCY_WARNING = (
-    "Importing will add these records to your database. If you've already imported this "
-    "file (or one with overlapping data), re-importing will create duplicates -- there's no "
-    "duplicate detection yet."
+    "Re-importing is safe: accounts, categories, debts, assets, budgets, and goals are "
+    "matched by name (or month + category for budgets) and updated in place rather than "
+    "duplicated. Transactions have no natural match, so only an exact repeat of one already "
+    "in your database is skipped -- anything even slightly different (e.g. an edited note) "
+    "is added as a new transaction."
 )
 
 
@@ -107,15 +109,22 @@ class ImportView(ctk.CTkFrame):
         self.confirm_button.configure(state="disabled")
 
         try:
-            imported_counts = self.presenter.confirm_import(self._preview)
+            result = self.presenter.confirm_import(self._preview)
         except Exception as exc:  # noqa: BLE001 - shown to the user, not swallowed
             self._render_text(f"Import failed.\n\n{describe_import_error(exc)}")
             return
 
         lines = ["Import complete.", ""]
-        for label, count in imported_counts.items():
-            if count:
-                lines.append(f"- {count} {label}")
+        for label, entity_result in result.by_label():
+            if entity_result.created:
+                lines.append(f"- {entity_result.created} {label} created")
+            if entity_result.updated:
+                lines.append(f"- {entity_result.updated} {label} updated")
+            if entity_result.skipped_duplicate:
+                lines.append(f"- {entity_result.skipped_duplicate} duplicate {label} skipped")
+
+        if len(lines) == 2:
+            lines.append("No changes.")
 
         self._render_text("\n".join(lines))
         self._preview = None

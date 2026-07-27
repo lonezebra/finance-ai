@@ -111,8 +111,8 @@ The desktop UI is a presentation adapter over these systems.
 finance-ai/
 ├── Makefile, pyproject.toml, uv.lock, README.md, ROADMAP.md, CHANGELOG.md
 ├── assets/
-│   ├── prompts/            # executive_briefing.md (implemented), strategic_advisor.md,
-│   │                       # scenario.md, financial_qa.md, goal_planning.md,
+│   ├── prompts/            # executive_briefing.md, strategic_advisor.md, scenario.md
+│   │                       # (implemented), financial_qa.md, goal_planning.md,
 │   │                       # explain_decision.md (placeholders)
 │   ├── icons/, themes/
 ├── docs/
@@ -171,7 +171,13 @@ missing column, `V003` missing required value, `V004` invalid number, `V005` inv
 
 Pipeline: `read_excel_workbook() → WorkbookData → validate_workbook() → ValidationReport →
 map_workbook() → ImportDataset → import_dataset()`. Runs in one atomic SQLAlchemy transaction.
-**Known limitation:** imports are not idempotent yet (see Known Issues).
+**Done — imports are now idempotent** (see Known Issues #1 and `import_dataset()`'s docstring):
+accounts, categories, debts, assets, budgets, and goals are upserted by their natural key (name,
+or month+category for budgets); re-importing refreshes existing rows instead of duplicating them.
+Transactions have no natural key -- they're matched on an exact full-row fingerprint and skipped
+if that exact row already exists, so anything even slightly different (e.g. an edited note)
+still imports as a new transaction. `import_dataset()` returns a typed `ImportResult`
+(created/updated/skipped_duplicate per entity), not a flat counts dict.
 
 ---
 
@@ -238,9 +244,13 @@ Principle: *Python calculates. Python structures. AI reasons. AI communicates.*
 calls the LM Studio client, returns text — **no business logic here**.
 `StrategicAdvisor.executive_briefing(month)` and `explain_scenario(month, scenario)` are the
 finance-specific facades; both consume the new `ExecutiveReport`/`ScenarioResult` formatters, not
-the old `briefing_summary()` string. Prompt assets live in `assets/prompts/`; `executive_briefing.md`
-and `scenario.md` are implemented, the rest (`strategic_advisor.md`, `financial_qa.md`,
-`goal_planning.md`, `explain_decision.md`) are still placeholders. Thinking-state models
+the old `briefing_summary()` string. `StrategicAdvisor.chat(month, messages)` is the multi-turn
+facade behind the AI Advisor chat page — it folds the same read-only (`persist=False`) executive
+report into a system message alongside the `strategic_advisor.md` prompt, then delegates to
+`AIRuntime.chat()`, a multi-turn sibling of `ask()` that threads a growing user/assistant message
+history rather than a single one-shot exchange. Prompt assets live in `assets/prompts/`;
+`executive_briefing.md`, `scenario.md`, and `strategic_advisor.md` are implemented, the rest
+(`financial_qa.md`, `goal_planning.md`, `explain_decision.md`) are still placeholders. Thinking-state models
 (`ThinkingPhase`: build context → review changes → analyze decisions → generate response, corrected
 from an earlier version that described a health/confidence-score review step the current pipeline
 never performs) are wired into a background-threaded UI request via `ai/background.py`'s
@@ -327,18 +337,31 @@ rather than deferring to one giant hardening pass.
   through the SQLAlchemy ORM (no raw SQL found, no injection surface). Known gap: the SQLite file
   is unencrypted at rest — today that relies on OS-level disk encryption (e.g. FileVault), not
   app-level; revisit only if the user explicitly wants app-level encryption.
-- **Observability:** `logs/` (`LOG_DIR` in `config.py`) and the `audit_log` table both exist but
-  nothing writes to either — zero uses of Python's `logging` module anywhere in `src/`. Add basic
-  logging (imports, snapshot creation, AI calls, errors) as features are built, not after the fact.
-  Wire `audit_log` in once an actual AI-driven data-mutation feature exists (ties to Rule 4) —
-  building it against nothing yet would be speculative; nothing shipped so far mutates data on the
-  AI's behalf.
+- **Observability:** `logs/` (`LOG_DIR` in `config.py`) and the `audit_log` table both exist.
+  **Started** — `logging_config.py::configure_logging()` wires the `finance_ai` logger (parent of
+  every `finance_ai.*` module logger) to a rotating file at `LOG_DIR/finance_ai.log`; called once
+  from `bootstrap_app()` (desktop app) and from `run_import.py`'s CLI entrypoint. `imports/importer.py`
+  logs import start/completion/failure — the first (and so far only) module actually using it.
+  Everything else in `src/` is still unlogged; add calls to the existing logger as each area is
+  touched, rather than in one sweep. Wire `audit_log` in once an actual AI-driven data-mutation
+  feature exists (ties to Rule 4) — building it against nothing yet would be speculative; nothing
+  shipped so far mutates data on the AI's behalf.
 - **Scalability:** not a multi-tenant concern here — the real question is whether SQLite/pandas
   hold up as one user's transaction history grows over years. They do, comfortably, so this stays
   low-risk as long as nothing breaks the local-first, single-process assumption.
 
 **High priority (before public beta):**
-1. Import idempotency / duplicate handling
+1. **Done.** `import_dataset()` (`imports/importer.py`) upserts accounts, categories, debts,
+   assets, budgets, and goals by natural key (name; month+category for budgets), and skips
+   transactions that exactly match one already in the database (full-row fingerprint: date,
+   merchant, description, amount, account, category, notes). Returns a typed `ImportResult`
+   (created/updated/skipped_duplicate per entity) instead of a flat counts dict — `run_import.py`,
+   `ImportPresenter.confirm_import()`, and `ImportView` all updated to match. Within-batch
+   duplicates (the same row appearing twice in one workbook) are also caught, not just
+   across-import duplicates. Known, accepted limitation: the transaction fingerprint requires an
+   *exact* match on every field — editing so much as a note on a re-imported transaction makes it
+   look new rather than updating the original. Real bank-transaction dedup (stable external IDs)
+   is out of scope until there's an actual bank API integration to provide them.
 2. Real database migrations instead of reset-on-schema-change
 3. **Partially done.** `create_executive_report()` now takes a `persist` parameter — `persist=False`
    (used by the briefing's summary cards, which render on every page visit) computes the snapshot
@@ -415,7 +438,15 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   `imports/errors.py::describe_import_error()` for friendly duplicate-key messages. Deliberately
   did not add duplicate detection — import is still not idempotent (known issue #1); the UI just
   warns clearly and fails gracefully instead of crashing when a re-import collides.
-- D4 (Strategic Advisor chat): not started.
+- D4 (Strategic Advisor chat): **Done.** Wired the existing "AI Advisor" sidebar placeholder into
+  a real multi-turn chat: `ChatPresenter` (same `attach()`/`detach()` + defensive
+  `tkinter.TclError` pattern as `BriefingPresenter`, owned by `MainWindow` so a conversation
+  survives navigating away and back) plus `ChatView` (scrollable bubble transcript, text input,
+  indeterminate progress bar while a reply is in flight, auto-scroll to the newest message).
+  In-memory only — conversations are lost on app restart, no new persistence/schema change this
+  pass (see Known Issues: chat history persistence is not tracked as a gap, just an intentional v1
+  scope cut). Deliberately does not reuse the executive briefing's 4-phase `ThinkingAnimator` — those
+  phases describe report generation specifically and would mislabel a plain chat turn.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

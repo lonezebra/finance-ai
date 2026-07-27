@@ -23,6 +23,21 @@ class StrategicAdvisor:
             context=context,
         )
 
+    def chat(
+        self,
+        month: str,
+        messages: list[dict[str, str]],
+    ) -> str:
+
+        report = create_executive_report(month, persist=False)
+        context = format_executive_report_for_ai(report)
+
+        return self.runtime.chat(
+            prompt="strategic_advisor",
+            context=context,
+            messages=messages,
+        )
+
     def explain_scenario(
         self,
         month: str,

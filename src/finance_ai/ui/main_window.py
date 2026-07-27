@@ -1,8 +1,10 @@
 import customtkinter as ctk
 
 from finance_ai.ui.briefing_view import BriefingView
+from finance_ai.ui.chat_view import ChatView
 from finance_ai.ui.import_view import ImportView
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter
+from finance_ai.ui.presenters.chat_presenter import ChatPresenter
 
 
 class MainWindow(ctk.CTk):
@@ -20,6 +22,10 @@ class MainWindow(ctk.CTk):
         # survives navigating away and back -- _clear_content() destroys the whole page on
         # every navigation, but this presenter's lifetime spans the app's lifetime.
         self.briefing_presenter = BriefingPresenter()
+
+        # Same reasoning as briefing_presenter: owned here so the conversation (and any
+        # in-flight reply) survives navigating away and back.
+        self.chat_presenter = ChatPresenter()
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -82,6 +88,11 @@ class MainWindow(ctk.CTk):
         view = ImportView(self.content)
         view.grid(row=0, column=0, sticky="nsew")
 
+    def _show_chat(self):
+        self._clear_content()
+        view = ChatView(self.content, presenter=self.chat_presenter)
+        view.grid(row=0, column=0, sticky="nsew")
+
     def _show_placeholder(self, name: str):
         if name == "Executive Briefing":
             self._show_briefing()
@@ -89,6 +100,10 @@ class MainWindow(ctk.CTk):
 
         if name == "Import Data":
             self._show_import()
+            return
+
+        if name == "AI Advisor":
+            self._show_chat()
             return
 
         self._clear_content()

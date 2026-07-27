@@ -1,4 +1,5 @@
 import threading
+import tkinter
 
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter, BriefingRequestState
 
@@ -122,6 +123,31 @@ def test_reattaching_after_completion_replays_result_without_rerunning():
 
     assert successes == ["Briefing text"]
     assert presenter.advisor.calls == 1
+
+
+def test_dead_widget_callback_self_heals_instead_of_raising():
+    """Simulates the real bug: the attached view's widgets are torn down (the user
+    navigated away) but detach() didn't run first because <Destroy> and an
+    already-scheduled animator tick aren't strictly ordered. The listener callback then
+    raises TclError trying to touch a dead widget -- the presenter must swallow that and
+    clear the listener instead of propagating the crash."""
+    presenter = BriefingPresenter()
+    presenter.advisor = _FakeAdvisor(result="Briefing text")
+
+    def dead_widget_callback(text):
+        raise tkinter.TclError("invalid command name \".!label\"")
+
+    presenter.attach(
+        on_thinking_update=lambda state: None,
+        on_success=dead_widget_callback,
+        on_error=lambda message: None,
+    )
+
+    presenter.generate(_FakeWidget())
+    _drain(presenter)  # must not raise
+
+    assert presenter.state == BriefingRequestState.DONE
+    assert presenter._listener is None
 
 
 def test_detach_prevents_crash_on_late_delivery():

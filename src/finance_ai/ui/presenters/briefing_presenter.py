@@ -1,3 +1,4 @@
+import tkinter
 from enum import Enum
 from typing import NamedTuple
 
@@ -81,19 +82,29 @@ class BriefingPresenter:
 
     def _handle_thinking_update(self, state: ThinkingState) -> None:
         self.thinking_state = state
-        if self._listener:
-            self._listener.on_thinking_update(state)
+        self._notify(lambda listener: listener.on_thinking_update(state))
 
     def _handle_success(self, text: str) -> None:
         self.animator.stop()
         self.state = BriefingRequestState.DONE
         self.result_text = text
-        if self._listener:
-            self._listener.on_success(text)
+        self._notify(lambda listener: listener.on_success(text))
 
     def _handle_error(self, exc: Exception) -> None:
         self.animator.stop()
         self.state = BriefingRequestState.ERROR
         self.result_text = describe_ai_error(exc)
-        if self._listener:
-            self._listener.on_error(self.result_text)
+        self._notify(lambda listener: listener.on_error(self.result_text))
+
+    def _notify(self, call) -> None:
+        if not self._listener:
+            return
+
+        try:
+            call(self._listener)
+        except tkinter.TclError:
+            # The attached view's widgets were torn down (e.g. the user navigated away)
+            # without detach() running first -- <Destroy> and an already-scheduled
+            # animator/poll callback aren't strictly ordered, so this can race. Treat a
+            # dead widget as an implicit detach instead of crashing the callback.
+            self._listener = None

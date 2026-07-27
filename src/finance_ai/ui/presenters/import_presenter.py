@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from finance_ai.imports.importer import import_dataset
+from finance_ai.imports.importer import ImportResult, import_dataset
 from finance_ai.imports.mapper import ImportDataset, map_workbook
 from finance_ai.imports.models import ValidationReport
 from finance_ai.imports.reader import read_excel_workbook
@@ -57,7 +57,7 @@ class ImportPresenter:
             counts=counts,
         )
 
-    def confirm_import(self, preview: ImportPreview) -> dict[str, int]:
+    def confirm_import(self, preview: ImportPreview) -> ImportResult:
         if preview.dataset is None:
             raise ValueError("Cannot import a workbook that failed validation.")
 

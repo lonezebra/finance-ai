@@ -171,7 +171,13 @@ missing column, `V003` missing required value, `V004` invalid number, `V005` inv
 
 Pipeline: `read_excel_workbook() → WorkbookData → validate_workbook() → ValidationReport →
 map_workbook() → ImportDataset → import_dataset()`. Runs in one atomic SQLAlchemy transaction.
-**Known limitation:** imports are not idempotent yet (see Known Issues).
+**Done — imports are now idempotent** (see Known Issues #1 and `import_dataset()`'s docstring):
+accounts, categories, debts, assets, budgets, and goals are upserted by their natural key (name,
+or month+category for budgets); re-importing refreshes existing rows instead of duplicating them.
+Transactions have no natural key -- they're matched on an exact full-row fingerprint and skipped
+if that exact row already exists, so anything even slightly different (e.g. an edited note)
+still imports as a new transaction. `import_dataset()` returns a typed `ImportResult`
+(created/updated/skipped_duplicate per entity), not a flat counts dict.
 
 ---
 
@@ -331,18 +337,31 @@ rather than deferring to one giant hardening pass.
   through the SQLAlchemy ORM (no raw SQL found, no injection surface). Known gap: the SQLite file
   is unencrypted at rest — today that relies on OS-level disk encryption (e.g. FileVault), not
   app-level; revisit only if the user explicitly wants app-level encryption.
-- **Observability:** `logs/` (`LOG_DIR` in `config.py`) and the `audit_log` table both exist but
-  nothing writes to either — zero uses of Python's `logging` module anywhere in `src/`. Add basic
-  logging (imports, snapshot creation, AI calls, errors) as features are built, not after the fact.
-  Wire `audit_log` in once an actual AI-driven data-mutation feature exists (ties to Rule 4) —
-  building it against nothing yet would be speculative; nothing shipped so far mutates data on the
-  AI's behalf.
+- **Observability:** `logs/` (`LOG_DIR` in `config.py`) and the `audit_log` table both exist.
+  **Started** — `logging_config.py::configure_logging()` wires the `finance_ai` logger (parent of
+  every `finance_ai.*` module logger) to a rotating file at `LOG_DIR/finance_ai.log`; called once
+  from `bootstrap_app()` (desktop app) and from `run_import.py`'s CLI entrypoint. `imports/importer.py`
+  logs import start/completion/failure — the first (and so far only) module actually using it.
+  Everything else in `src/` is still unlogged; add calls to the existing logger as each area is
+  touched, rather than in one sweep. Wire `audit_log` in once an actual AI-driven data-mutation
+  feature exists (ties to Rule 4) — building it against nothing yet would be speculative; nothing
+  shipped so far mutates data on the AI's behalf.
 - **Scalability:** not a multi-tenant concern here — the real question is whether SQLite/pandas
   hold up as one user's transaction history grows over years. They do, comfortably, so this stays
   low-risk as long as nothing breaks the local-first, single-process assumption.
 
 **High priority (before public beta):**
-1. Import idempotency / duplicate handling
+1. **Done.** `import_dataset()` (`imports/importer.py`) upserts accounts, categories, debts,
+   assets, budgets, and goals by natural key (name; month+category for budgets), and skips
+   transactions that exactly match one already in the database (full-row fingerprint: date,
+   merchant, description, amount, account, category, notes). Returns a typed `ImportResult`
+   (created/updated/skipped_duplicate per entity) instead of a flat counts dict — `run_import.py`,
+   `ImportPresenter.confirm_import()`, and `ImportView` all updated to match. Within-batch
+   duplicates (the same row appearing twice in one workbook) are also caught, not just
+   across-import duplicates. Known, accepted limitation: the transaction fingerprint requires an
+   *exact* match on every field — editing so much as a note on a re-imported transaction makes it
+   look new rather than updating the original. Real bank-transaction dedup (stable external IDs)
+   is out of scope until there's an actual bank API integration to provide them.
 2. Real database migrations instead of reset-on-schema-change
 3. **Partially done.** `create_executive_report()` now takes a `persist` parameter — `persist=False`
    (used by the briefing's summary cards, which render on every page visit) computes the snapshot

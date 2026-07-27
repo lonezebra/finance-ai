@@ -72,6 +72,7 @@ make run
 
 - **Import Data** — bring in your own Excel workbook (a starter template lives at `data/exports/finance_template.xlsx`)
 - **Executive Briefing** — your financial snapshot plus an AI-generated narrative (requires LM Studio running)
+- **Scenario Planning** — build a what-if (a raise, an extra debt payment, a windfall, ...) and see the projected impact, with an optional AI explanation (requires LM Studio running)
 - **AI Advisor** — ask an ongoing chat about your finances (requires LM Studio running)
 
 ## Run the tests
@@ -181,14 +182,16 @@ Excel / CSV
 - Structured Excel import pipeline, including idempotent re-import (upsert by natural key for
   accounts/categories/debts/assets/budgets/goals; exact-match duplicate detection for transactions)
 - Workbook validation
-- Financial Snapshot, Health, and Confidence engines
+- Financial Snapshot, Health, and Confidence engines (Confidence Score is surfaced in the
+  Executive Briefing)
 - Decision Engine (debt payoff, emergency fund, investment, and goal-funding candidates)
-- Scenario Engine (income/expense changes, extra debt payments, contribution changes, one-time
-  purchases/windfalls) — engine and AI explanation are done; no desktop UI for it yet, see Planned
+- Scenario Engine with a desktop UI (income/expense changes, extra debt payments, contribution
+  changes, one-time purchases/windfalls; multiple adjustments per scenario), including an
+  on-demand AI explanation of the projection
 - Executive Briefing (deterministic snapshot cards plus an AI-generated narrative)
-- Desktop app (CustomTkinter): Executive Briefing, Import Data, and AI Advisor chat are functional;
-  Dashboard, Accounts, Transactions, Debt, Assets, Budget, Goals, Reports, and Settings are still
-  placeholders
+- Desktop app (CustomTkinter): Executive Briefing, Scenario Planning, Import Data, and AI Advisor
+  chat are functional; Dashboard, Accounts, Transactions, Debt, Assets, Budget, Goals, Reports, and
+  Settings are still placeholders
 - Local AI Runtime and Strategic Advisor (LM Studio), including a multi-turn chat
 - Prompt Library
 - Thinking state framework
@@ -201,12 +204,10 @@ Excel / CSV
 ## Versions 0.2–0.6 — done
 
 Excel import and validation with idempotent re-import, the desktop shell, the Strategic Advisor
-(including the chat above), the Financial History Engine, and the Scenario Engine backend.
+(including the chat above), the Financial History Engine, and the Scenario Engine (backend and UI).
 
 ## Version 0.7 — in progress (public beta readiness)
 
-- Scenario Planning desktop UI (the engine already exists; no page to use it from yet)
-- Surface the Financial Confidence Score somewhere in the app (computed today, but not shown)
 - Dashboard and the remaining placeholder pages (Accounts, Transactions, Debt, Assets, Budget,
   Goals, Reports, Settings)
 

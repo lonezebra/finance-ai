@@ -4,6 +4,7 @@ from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter, Brief
 from finance_ai.ui.presenters.executive_report_presenter import ExecutiveReportPresenter
 from finance_ai.ui.report_cards import (
     build_changes_card,
+    build_confidence_card,
     build_decisions_card,
     build_snapshot_card,
     build_strengths_concerns_card,
@@ -79,19 +80,22 @@ class BriefingView(ctk.CTkFrame):
         cards_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 10))
         cards_frame.grid_columnconfigure(0, weight=1)
 
+        confidence_card = build_confidence_card(cards_frame, report.confidence)
+        confidence_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+
         snapshot_card = build_snapshot_card(cards_frame, report.snapshot)
-        snapshot_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        snapshot_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
 
         changes_card = build_changes_card(cards_frame, report.important_changes)
-        changes_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        changes_card.grid(row=2, column=0, sticky="ew", pady=(0, 10))
 
         strengths_card = build_strengths_concerns_card(
             cards_frame, report.strengths, report.concerns
         )
-        strengths_card.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        strengths_card.grid(row=3, column=0, sticky="ew", pady=(0, 10))
 
         decisions_card = build_decisions_card(cards_frame, report.top_decisions)
-        decisions_card.grid(row=3, column=0, sticky="ew", pady=(0, 10))
+        decisions_card.grid(row=4, column=0, sticky="ew", pady=(0, 10))
 
     def _on_destroy(self, event):
         if event.widget is self:

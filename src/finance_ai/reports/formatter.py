@@ -20,8 +20,17 @@ def format_executive_report_for_ai(report: ExecutiveReport) -> str:
         f"- Debt-to-Income Ratio: {format_percent(snapshot.debt_to_income_ratio)}",
         f"- Emergency Fund: {format_months(snapshot.emergency_fund_months)}",
         "",
-        "Important Changes:",
+        (
+            f"Data Confidence: {report.confidence.score}/100 ({report.confidence.label}) -- "
+            "measures how complete and trustworthy the underlying data is, not financial health."
+        ),
     ]
+
+    for issue in report.confidence.issues:
+        lines.append(f"- [{issue.severity}] {issue.message}")
+
+    lines.append("")
+    lines.append("Important Changes:")
 
     if report.important_changes:
         for change in report.important_changes:

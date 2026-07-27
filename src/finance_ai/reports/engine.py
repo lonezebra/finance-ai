@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from finance_ai.decision.engine import generate_decisions_from_db
+from finance_ai.finance.confidence import calculate_financial_confidence_score
 from finance_ai.finance.metrics import create_financial_snapshot
 from finance_ai.history.comparison import compare_snapshots
 from finance_ai.history.engine import get_latest_snapshot, get_previous_snapshot, save_snapshot
@@ -54,6 +55,7 @@ def create_executive_report(month: str, persist: bool = True) -> ExecutiveReport
         concerns=_identify_concerns(snapshot),
         recommended_focus=_recommended_focus(snapshot),
         top_decisions=decision_set.decisions[:3],
+        confidence=calculate_financial_confidence_score(),
     )
 
 

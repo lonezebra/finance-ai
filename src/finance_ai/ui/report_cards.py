@@ -6,6 +6,14 @@ from finance_ai.history.interpreter import ChangeDirection
 IMPROVED_COLOR = "#2fa572"
 WORSENED_COLOR = "#d9534f"
 NEUTRAL_COLOR = "gray60"
+MODERATE_COLOR = "#e0a030"
+
+CONFIDENCE_LABEL_COLORS = {
+    "High": IMPROVED_COLOR,
+    "Moderate": MODERATE_COLOR,
+    "Low": WORSENED_COLOR,
+    "Very Low": WORSENED_COLOR,
+}
 
 
 def _card_frame(parent, title: str) -> ctk.CTkFrame:
@@ -24,6 +32,51 @@ def _card_frame(parent, title: str) -> ctk.CTkFrame:
         anchor="w",
     )
     label.grid(row=0, column=0, sticky="w", padx=14, pady=(12, 6))
+
+    return card
+
+
+def build_confidence_card(parent, confidence) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Data Confidence")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    caption = ctk.CTkLabel(
+        body,
+        text="How complete and trustworthy your data is -- not a measure of your finances.",
+        text_color="gray60",
+        anchor="w",
+        justify="left",
+        wraplength=520,
+    )
+    caption.pack(anchor="w", pady=(0, 6))
+
+    score_color = CONFIDENCE_LABEL_COLORS.get(confidence.label, NEUTRAL_COLOR)
+    header = ctk.CTkLabel(
+        body,
+        text=f"{confidence.score}/100  ·  {confidence.label}",
+        font=ctk.CTkFont(size=18, weight="bold"),
+        text_color=score_color,
+        anchor="w",
+    )
+    header.pack(anchor="w", pady=(0, 4))
+
+    if not confidence.issues:
+        ctk.CTkLabel(body, text="No data-quality issues identified.", anchor="w").pack(
+            anchor="w", pady=2
+        )
+        return card
+
+    for issue in confidence.issues:
+        ctk.CTkLabel(
+            body,
+            text=f"- {issue.message}",
+            text_color="gray60",
+            anchor="w",
+            justify="left",
+            wraplength=520,
+        ).pack(anchor="w", pady=2)
 
     return card
 

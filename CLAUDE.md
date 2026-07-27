@@ -202,6 +202,14 @@ Measures data completeness/trustworthiness, **not** wealth. Starts at 100, subtr
 accounts/transactions/categories/budgets/debts/assets/goals and for uncategorized transactions or
 debts missing interest rates. Labels: 90+ High, 70–89 Moderate, 50–69 Low, <50 Very Low.
 *Known weakness:* demo data scores 100/100 despite being sparse — needs freshness/coverage signals.
+**Done — now surfaced in the UI:** `ExecutiveReport.confidence` (`reports/models.py`) carries a
+`FinancialConfidenceScore`, populated by `create_executive_report()` via
+`calculate_financial_confidence_score()`. Shown as the first card in the Executive Briefing
+(`report_cards.py::build_confidence_card()`, captioned to make the "not wealth" distinction
+explicit so it isn't confused with the Health Score) and included in
+`format_executive_report_for_ai()`'s output, so the AI narrative and chat can reference data
+caveats too. Defaults to a clean 100/High score when not explicitly set (e.g. in tests that
+construct an `ExecutiveReport` directly), so a missing value never implies an unassessed problem.
 
 ### Financial Health Score
 Measures the financial condition itself. Starts at 100, subtracts for no income, negative cash
@@ -435,9 +443,8 @@ auto-generated Scenario projections ("compare decisions through scenarios").
 - D2 (Executive Briefing summary cards): **Done.**
 - D3 (import workflow: choose/preview/confirm): **Done.** Also wired up the previously-dormant
   `import_batches` table (records a row per successful import) and added
-  `imports/errors.py::describe_import_error()` for friendly duplicate-key messages. Deliberately
-  did not add duplicate detection — import is still not idempotent (known issue #1); the UI just
-  warns clearly and fails gracefully instead of crashing when a re-import collides.
+  `imports/errors.py::describe_import_error()` for friendly duplicate-key messages. Import
+  idempotency (known issue #1, originally deferred here) has since been fixed — see §8.
 - D4 (Strategic Advisor chat): **Done.** Wired the existing "AI Advisor" sidebar placeholder into
   a real multi-turn chat: `ChatPresenter` (same `attach()`/`detach()` + defensive
   `tkinter.TclError` pattern as `BriefingPresenter`, owned by `MainWindow` so a conversation

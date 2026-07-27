@@ -1,4 +1,5 @@
 from finance_ai.decision.models import DecisionPriority, FinancialDecision, TimeHorizon
+from finance_ai.finance.confidence import ConfidenceIssue, FinancialConfidenceScore
 from finance_ai.finance.metrics import FinancialSnapshot
 from finance_ai.history.interpreter import ChangeDirection, ChangeSignificance, InterpretedChange
 from finance_ai.reports.formatter import format_executive_report_for_ai
@@ -29,6 +30,32 @@ def test_formatter_includes_snapshot_facts():
     assert "Executive Report for 2026-06" in output
     assert "Net Worth: $575,000.00" in output
     assert "Savings Rate: 57.0%" in output
+
+
+def test_formatter_includes_default_confidence_when_not_specified():
+    report = ExecutiveReport(month="2026-06", snapshot=make_snapshot())
+
+    output = format_executive_report_for_ai(report)
+
+    assert "Data Confidence: 100/100 (High)" in output
+
+
+def test_formatter_includes_confidence_score_and_issues():
+    confidence = FinancialConfidenceScore(
+        score=65,
+        issues=[
+            ConfidenceIssue("medium", "No budgets have been created."),
+            ConfidenceIssue("low", "No financial goals have been added."),
+        ],
+    )
+    report = ExecutiveReport(month="2026-06", snapshot=make_snapshot(), confidence=confidence)
+
+    output = format_executive_report_for_ai(report)
+
+    assert "Data Confidence: 65/100 (Low)" in output
+    assert "not financial health" in output
+    assert "[medium] No budgets have been created." in output
+    assert "[low] No financial goals have been added." in output
 
 
 def test_formatter_lists_important_changes():

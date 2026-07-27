@@ -39,7 +39,12 @@ class ScenarioView(ctk.CTkFrame):
         self.presenter = presenter
 
         self.grid_columnconfigure(0, weight=1)
+        # Results (row 4) and the AI narrative (row 5) split the available vertical space
+        # evenly, same reasoning as BriefingView's cards/textbox split -- the narrative has
+        # its own always-visible section rather than being appended at the end of the
+        # scrollable results cards, where it wasn't obvious it needed scrolling to find.
         self.grid_rowconfigure(4, weight=1)
+        self.grid_rowconfigure(5, weight=1)
 
         title = ctk.CTkLabel(
             self, text="Scenario Planning", font=ctk.CTkFont(size=28, weight="bold")
@@ -49,6 +54,7 @@ class ScenarioView(ctk.CTkFrame):
         self._build_form(row=1)
         self._build_ai_controls(row=2)
         self._build_results_frame(row=4)
+        self._build_narrative_frame(row=5)
 
         self.bind("<Destroy>", self._on_destroy)
         self._update_hint()
@@ -117,8 +123,13 @@ class ScenarioView(ctk.CTkFrame):
 
     def _build_results_frame(self, row: int):
         self.results_frame = ctk.CTkScrollableFrame(self)
-        self.results_frame.grid(row=row, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        self.results_frame.grid(row=row, column=0, sticky="nsew", padx=20, pady=(0, 10))
         self.results_frame.grid_columnconfigure(0, weight=1)
+
+    def _build_narrative_frame(self, row: int):
+        self.narrative_frame = ctk.CTkScrollableFrame(self)
+        self.narrative_frame.grid(row=row, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        self.narrative_frame.grid_columnconfigure(0, weight=1)
 
     def _on_destroy(self, event):
         if event.widget is self:
@@ -160,6 +171,7 @@ class ScenarioView(ctk.CTkFrame):
         self._render_adjustments_list()
         self._render_ai_controls()
         self._render_results()
+        self._render_narrative()
 
     def _render_adjustments_list(self):
         for child in self.adjustments_list.winfo_children():
@@ -247,8 +259,14 @@ class ScenarioView(ctk.CTkFrame):
             self.results_frame, result.projected_decisions.decisions[:3]
         )
         decisions_card.grid(row=row, column=0, sticky="ew", pady=(0, 10))
-        row += 1
 
-        if self.presenter.narrative_text:
-            narrative_card = build_ai_narrative_card(self.results_frame, self.presenter.narrative_text)
-            narrative_card.grid(row=row, column=0, sticky="ew", pady=(0, 10))
+    def _render_narrative(self):
+        for child in self.narrative_frame.winfo_children():
+            child.destroy()
+
+        text = (
+            self.presenter.narrative_text
+            or 'Click "Explain with AI" above to see an AI explanation of this scenario.'
+        )
+        card = build_ai_narrative_card(self.narrative_frame, text)
+        card.grid(row=0, column=0, sticky="ew")

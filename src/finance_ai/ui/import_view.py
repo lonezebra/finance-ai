@@ -31,12 +31,23 @@ class ImportView(ctk.CTkFrame):
         )
         title.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 10))
 
+        controls = ctk.CTkFrame(self, fg_color="transparent")
+        controls.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 10))
+
+        self.create_template_button = ctk.CTkButton(
+            controls,
+            text="Create Template...",
+            fg_color=("gray70", "gray30"),
+            command=self.create_template,
+        )
+        self.create_template_button.grid(row=0, column=0, padx=(0, 10))
+
         self.choose_button = ctk.CTkButton(
-            self,
+            controls,
             text="Choose File...",
             command=self.choose_file,
         )
-        self.choose_button.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 10))
+        self.choose_button.grid(row=0, column=1)
 
         self.preview_box = ctk.CTkTextbox(self, wrap="word")
         self.preview_box.grid(row=2, column=0, sticky="nsew", padx=20, pady=10)
@@ -51,6 +62,34 @@ class ImportView(ctk.CTkFrame):
             state="disabled",
         )
         self.confirm_button.grid(row=3, column=0, sticky="ew", padx=20, pady=(10, 20))
+
+    def create_template(self):
+        path = filedialog.asksaveasfilename(
+            title="Save the blank template as...",
+            initialfile="finance_template.xlsx",
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx")],
+        )
+
+        if not path:
+            return
+
+        try:
+            saved_path = self.presenter.create_template(path)
+        except Exception as exc:  # noqa: BLE001 - shown to the user, not swallowed
+            self._render_text(f"Could not create the template.\n\n{exc}")
+            return
+
+        # A freshly-created template is blank, not something that was just previewed for
+        # import -- clear any stale preview so Confirm Import can't point at old text.
+        self._preview = None
+        self.confirm_button.configure(state="disabled")
+
+        self._render_text(
+            f"Template created:\n{saved_path}\n\n"
+            'Fill it in with your own figures, then click "Choose File..." above to '
+            "import it."
+        )
 
     def choose_file(self):
         path = filedialog.askopenfilename(

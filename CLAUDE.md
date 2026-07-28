@@ -688,6 +688,13 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   `import_batches` table (records a row per successful import) and added
   `imports/errors.py::describe_import_error()` for friendly duplicate-key messages. Import
   idempotency (known issue #1, originally deferred here) has since been fixed — see §8.
+  **Extended:** the Import Data page also has a **Create Template...** button now
+  (`ImportPresenter.create_template()`, injectable `create_template_fn` for testing, same
+  pattern as `SettingsPresenter`'s backup functions) — asks where to save via
+  `filedialog.asksaveasfilename` and writes it there, so getting a blank workbook to fill in
+  no longer requires the command line at all. Overwriting an existing file at that path is
+  safe without confirmation: the template holds only headers and illustrative example rows,
+  never the user's actual data.
 - D4 (Strategic Advisor chat): **Done.** Wired the existing "AI Advisor" sidebar placeholder into
   a real multi-turn chat: `ChatPresenter` (same `attach()`/`detach()` + defensive
   `tkinter.TclError` pattern as `BriefingPresenter`, owned by `MainWindow` so a conversation

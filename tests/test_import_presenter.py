@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from openpyxl import Workbook
 
 from finance_ai.ui.presenters.import_presenter import ImportPresenter
@@ -46,6 +48,41 @@ def _write_workbook(path, sheets: dict) -> str:
 
     wb.save(path)
     return str(path)
+
+
+# --- create_template ---------------------------------------------------------------------
+
+
+def test_create_template_writes_to_the_given_path(tmp_path):
+    captured = {}
+
+    def fake_create_template(path):
+        captured["path"] = path
+        path.write_text("workbook contents")
+        return path
+
+    target = tmp_path / "my_template.xlsx"
+    presenter = ImportPresenter(create_template_fn=fake_create_template)
+
+    result = presenter.create_template(str(target))
+
+    assert result == target
+    assert captured["path"] == target
+    assert target.exists()
+
+
+def test_create_template_uses_the_default_location_when_no_path_given():
+    calls = []
+
+    def fake_create_template():
+        calls.append("default")
+        return Path("data/exports/finance_template.xlsx")
+
+    presenter = ImportPresenter(create_template_fn=fake_create_template)
+
+    presenter.create_template()
+
+    assert calls == ["default"]
 
 
 def test_load_preview_for_valid_workbook(tmp_path):

@@ -236,6 +236,32 @@ def calculate_financial_confidence_score(
                 )
             )
 
+        expense_categories = (
+            session.query(func.count(Category.id))
+            .filter(Category.category_type == "expense")
+            .scalar()
+            or 0
+        )
+        essential_marked = (
+            session.query(func.count(Category.id))
+            .filter(Category.is_essential.is_(True))
+            .scalar()
+            or 0
+        )
+
+        # Only worth mentioning once there's spending to classify -- with no categories at
+        # all, the "No categories have been added" issue above already covers it.
+        if expense_categories > 0 and essential_marked == 0:
+            score -= 5
+            issues.append(
+                ConfidenceIssue(
+                    "low",
+                    "No spending is marked as essential yet. Marking which categories you "
+                    "could not stop paying (rent, food, utilities) lets Open CFO work out "
+                    "how long your cash would last if you had to cut back.",
+                )
+            )
+
         overlaps = find_account_asset_overlaps(session)
 
         if overlaps:

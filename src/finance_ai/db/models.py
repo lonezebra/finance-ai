@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from finance_ai.db.database import Base
@@ -23,6 +23,11 @@ class Category(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     category_type: Mapped[str] = mapped_column(String, nullable=False)
+    # Would you still have to pay this if your income stopped? Nullable on purpose:
+    # NULL means "the user hasn't said", which is different from "no". Only spending the
+    # user has explicitly marked essential counts toward the essentials-only emergency
+    # fund figure, so guessing here would put a made-up number in front of them.
+    is_essential: Mapped[bool | None] = mapped_column(Boolean)
 
 
 class Transaction(Base):
@@ -126,3 +131,10 @@ class FinancialSnapshotRecord(Base):
     savings_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     debt_to_income_ratio: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     emergency_fund_months: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
+    # Nullable, unlike every metric above: snapshots saved before this feature existed
+    # genuinely have no value here, and NULL says that honestly. Defaulting them to 0.0
+    # would read as "no runway at all" and would make the Timeline Engine report a huge
+    # fake improvement the first time a real value landed.
+    essential_monthly_expenses: Mapped[float | None] = mapped_column(Float)
+    essential_emergency_fund_months: Mapped[float | None] = mapped_column(Float)

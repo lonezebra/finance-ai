@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy import func
 
 from finance_ai.db.database import SessionLocal
-from finance_ai.db.models import Account, Asset, Debt, Transaction
+from finance_ai.db.models import Account, Asset, Category, Debt, Transaction
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,13 @@ class FinancialSnapshot:
     savings_rate: float
     debt_to_income_ratio: float
     emergency_fund_months: float
+
+    # "Essentials only" versions of the two expense figures above. None -- not 0.0 --
+    # when the user hasn't marked any category as essential, because the honest answer
+    # is "we don't know yet", and 0.0 would display as "no runway" or "no essential
+    # spending", both of which are wrong and alarming. Consumers must handle None.
+    essential_monthly_expenses: float | None = None
+    essential_emergency_fund_months: float | None = None
 
 
 def _month_bounds(month: str) -> tuple[date, date]:
@@ -100,6 +107,40 @@ def get_monthly_expenses(session, month: str) -> float:
     return abs(float(total))
 
 
+def get_monthly_essential_expenses(session, month: str) -> float | None:
+    """Spending for the month in categories the user marked essential.
+
+    Returns None when no category has been marked essential at all -- that's "not set up
+    yet", which is different from "you spend nothing on essentials". Callers show it as
+    unavailable rather than as zero.
+
+    Categories explicitly marked non-essential are excluded, and so are ones left blank:
+    only spending the user has positively confirmed as essential counts, so the figure
+    never overstates what they'd truly have to keep paying.
+    """
+
+    any_marked = (
+        session.query(func.count(Category.id)).filter(Category.is_essential.is_(True)).scalar() or 0
+    )
+
+    if not any_marked:
+        return None
+
+    start, end = _month_bounds(month)
+
+    total = (
+        session.query(func.coalesce(func.sum(Transaction.amount), 0))
+        .join(Category, Transaction.category_id == Category.id)
+        .filter(Transaction.transaction_date >= start)
+        .filter(Transaction.transaction_date < end)
+        .filter(Transaction.amount < 0)
+        .filter(Category.is_essential.is_(True))
+        .scalar()
+    )
+
+    return abs(float(total))
+
+
 def get_monthly_debt_payments(session) -> float:
     total = session.query(func.coalesce(func.sum(Debt.minimum_payment), 0)).scalar()
     return float(total)
@@ -119,6 +160,13 @@ def create_financial_snapshot(month: str) -> FinancialSnapshot:
         debt_to_income_ratio = _safe_divide(monthly_debt_payments, monthly_income)
         emergency_fund_months = _safe_divide(cash_balance, monthly_expenses)
 
+        essential_monthly_expenses = get_monthly_essential_expenses(session, month)
+        essential_emergency_fund_months = (
+            _safe_divide(cash_balance, essential_monthly_expenses)
+            if essential_monthly_expenses is not None
+            else None
+        )
+
         return FinancialSnapshot(
             month=month,
             total_assets=total_assets,
@@ -131,4 +179,6 @@ def create_financial_snapshot(month: str) -> FinancialSnapshot:
             savings_rate=savings_rate,
             debt_to_income_ratio=debt_to_income_ratio,
             emergency_fund_months=emergency_fund_months,
+            essential_monthly_expenses=essential_monthly_expenses,
+            essential_emergency_fund_months=essential_emergency_fund_months,
         )

@@ -1,11 +1,10 @@
 from pathlib import Path
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from finance_ai.config import EXPORT_DIR
-
 
 TEMPLATE_PATH = EXPORT_DIR / "finance_template.xlsx"
 
@@ -21,6 +20,7 @@ SHEETS = {
     "Categories": [
         "Name",
         "Category Type",
+        "Essential",
     ],
     "Transactions": [
         "Transaction Date",
@@ -67,10 +67,12 @@ EXAMPLE_ROWS = {
         ["Savings", "savings", "Bank Name", 10000, "Emergency fund"],
     ],
     "Categories": [
-        ["Salary", "income"],
-        ["Groceries", "expense"],
-        ["Mortgage", "expense"],
-        ["Debt Payment", "expense"],
+        ["Salary", "income", ""],
+        ["Groceries", "expense", "yes"],
+        ["Mortgage", "expense", "yes"],
+        ["Debt Payment", "expense", "yes"],
+        ["Restaurants", "expense", "no"],
+        ["Streaming", "expense", "no"],
     ],
     "Transactions": [
         ["2026-06-01", "Costco", "Groceries", -225.50, "Checking", "Groceries", ""],

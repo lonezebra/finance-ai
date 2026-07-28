@@ -207,3 +207,37 @@ def test_failed_import_rolls_back_and_does_not_record_a_batch(session_factory):
     with session_factory() as session:
         assert session.query(ImportBatch).count() == 0
         assert session.query(Transaction).count() == 0
+
+
+def test_reimport_without_the_essential_column_does_not_wipe_existing_markings(session_factory):
+    """A workbook created before the Essential column existed reports is_essential=None
+    ("not stated"). Treating that as "no" would silently clear markings the user had already
+    made, just because they re-imported an older file."""
+
+    marked = make_dataset(categories=[CategoryImport("Groceries", "expense", is_essential=True)])
+    import_dataset(marked, source_file="new.xlsx", session_factory=session_factory)
+
+    with session_factory() as session:
+        assert session.query(Category).one().is_essential is True
+
+    # An older workbook: same category, no Essential column, so is_essential is None.
+    older = make_dataset(categories=[CategoryImport("Groceries", "expense")])
+    import_dataset(older, source_file="old.xlsx", session_factory=session_factory)
+
+    with session_factory() as session:
+        assert session.query(Category).one().is_essential is True  # preserved, not cleared
+
+
+def test_reimport_can_explicitly_change_a_marking(session_factory):
+    """An explicit "no" must still take effect -- only None is treated as "leave alone"."""
+
+    marked = make_dataset(categories=[CategoryImport("Restaurants", "expense", is_essential=True)])
+    import_dataset(marked, source_file="a.xlsx", session_factory=session_factory)
+
+    unmarked = make_dataset(
+        categories=[CategoryImport("Restaurants", "expense", is_essential=False)]
+    )
+    import_dataset(unmarked, source_file="b.xlsx", session_factory=session_factory)
+
+    with session_factory() as session:
+        assert session.query(Category).one().is_essential is False

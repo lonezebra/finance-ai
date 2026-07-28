@@ -1,22 +1,43 @@
 import sqlite3
 
+from alembic.config import Config
 from sqlalchemy import create_engine
 
+from alembic import command
+from finance_ai.config import PROJECT_ROOT
 from finance_ai.db import models  # noqa: F401 -- registers tables on Base.metadata
 from finance_ai.db.backup import list_backups
-from finance_ai.db.database import Base
-from finance_ai.db.migrate import current_revision, ensure_schema_up_to_date, head_revision
+from finance_ai.db.migrate import (
+    BASELINE_REVISION,
+    current_revision,
+    ensure_schema_up_to_date,
+    head_revision,
+)
 
 
 def make_pre_migration_database(path) -> None:
-    """Simulates an existing install from before migrations existed: all app tables
-    present (created the old way, via Base.metadata.create_all()), no alembic_version
-    table, real data in it."""
+    """Simulates an existing install from before migrations existed: the app's tables at the
+    *baseline* schema, no alembic_version table, real data in it.
+
+    Built by running the baseline migration and then dropping alembic_version, rather than
+    by Base.metadata.create_all(). create_all() reflects whatever the models say *today*,
+    which was identical to the baseline while only one migration existed but diverges the
+    moment a second one lands -- at which point the helper would be handing the code a
+    database newer than the revision it gets stamped at, and the upgrade would fail trying
+    to add columns that already exist. Running the migration keeps "pre-migration" honest
+    however many migrations accumulate later.
+    """
+
+    cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
+    command.upgrade(cfg, BASELINE_REVISION)
 
     engine = create_engine(f"sqlite:///{path}", future=True)
-    Base.metadata.create_all(engine)
 
     with engine.begin() as connection:
+        # Drop the version table so the database looks untracked, the way one created
+        # before Alembic was introduced would.
+        connection.exec_driver_sql("DROP TABLE alembic_version")
         connection.exec_driver_sql(
             "INSERT INTO accounts (name, account_type, current_balance) "
             "VALUES ('Checking', 'checking', 1000.0)"

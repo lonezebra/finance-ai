@@ -23,6 +23,8 @@ def save_snapshot(month: str) -> SnapshotRecord:
             savings_rate=snapshot.savings_rate,
             debt_to_income_ratio=snapshot.debt_to_income_ratio,
             emergency_fund_months=snapshot.emergency_fund_months,
+            essential_monthly_expenses=snapshot.essential_monthly_expenses,
+            essential_emergency_fund_months=snapshot.essential_emergency_fund_months,
         )
 
         session.add(record)
@@ -71,6 +73,10 @@ def _to_snapshot_record(record: FinancialSnapshotRecord) -> SnapshotRecord:
         savings_rate=record.savings_rate,
         debt_to_income_ratio=record.debt_to_income_ratio,
         emergency_fund_months=record.emergency_fund_months,
+        # Stays None for snapshots saved before this feature existed -- see the note on
+        # the columns in db/models.py.
+        essential_monthly_expenses=record.essential_monthly_expenses,
+        essential_emergency_fund_months=record.essential_emergency_fund_months,
     )
 
     return SnapshotRecord(

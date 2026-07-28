@@ -27,7 +27,10 @@ def session_factory():
 def _add_full_dataset(session_factory, *, transaction_dates):
     with session_factory() as session:
         account = Account(name="Checking", account_type="checking", current_balance=1000.0)
-        category = Category(name="Groceries", category_type="expense")
+        # Marked essential so this fixture represents a genuinely complete dataset --
+        # otherwise the "no spending marked essential" issue fires and the
+        # scores-100-with-no-issues assertions stop meaning what they say.
+        category = Category(name="Groceries", category_type="expense", is_essential=True)
         session.add_all([account, category])
         session.flush()
 

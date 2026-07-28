@@ -40,7 +40,7 @@ def cmd_list(args) -> int:
 
     print(f"{len(backups)} backup(s), newest first:\n")
     for backup in backups:
-        label = f"  [{backup.label}]" if backup.label else ""
+        label = f"  [{backup.description}]" if backup.description else ""
         print(
             f"  {backup.created_at:%Y-%m-%d %H:%M:%S}  "
             f"{_format_size(backup.size_bytes):>9}  {backup.path.name}{label}"

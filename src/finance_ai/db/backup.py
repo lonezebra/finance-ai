@@ -18,6 +18,17 @@ class BackupError(RuntimeError):
     shown to a non-technical user, per the error-handling requirement in CLAUDE.md Rule 8."""
 
 
+# Plain-language stand-ins for the two labels Open CFO applies to backups on its own, without
+# being asked. The raw label ("pre-migration", "pre-restore") is a filename slug, not prose --
+# fine for a developer reading the backups folder, but users had no way to know what it meant
+# without asking. Any label the user typed themselves is displayed as-is via BackupInfo.label;
+# only these two auto-generated ones need translating.
+AUTO_BACKUP_DESCRIPTIONS = {
+    "pre-migration": "automatic, saved before an app update changed the database",
+    "pre-restore": "automatic, saved right before this data was replaced by a restore",
+}
+
+
 @dataclass(frozen=True)
 class BackupInfo:
     path: Path
@@ -31,6 +42,18 @@ class BackupInfo:
         stem = self.path.stem
         parts = stem.split("-", 3)  # finance, YYYYMMDD, HHMMSS, [label]
         return parts[3] if len(parts) > 3 else ""
+
+    @property
+    def description(self) -> str:
+        """The label, in words a user didn't have to infer from a filename.
+
+        Translates Open CFO's own auto-generated labels ("pre-migration", "pre-restore") to
+        plain language; a label the user typed themselves (e.g. "before big import") is already
+        plain language, so it passes through unchanged. Use this for anything shown in the UI
+        or CLI -- .label stays as the raw filename fragment other code and tests key off of.
+        """
+
+        return AUTO_BACKUP_DESCRIPTIONS.get(self.label, self.label)
 
 
 def _slugify(label: str) -> str:

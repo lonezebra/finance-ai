@@ -170,7 +170,7 @@ class SettingsView(ctk.CTkFrame):
             row_frame.grid(row=index, column=0, sticky="ew", pady=3)
             row_frame.grid_columnconfigure(0, weight=1)
 
-            note = f"  ({backup.label})" if backup.label else ""
+            note = f"  ({backup.description})" if backup.description else ""
             text = f"{backup.created_at:%d %b %Y  %H:%M}   {format_size(backup.size_bytes)}{note}"
             ctk.CTkLabel(row_frame, text=text, anchor="w").grid(row=0, column=0, sticky="w")
 

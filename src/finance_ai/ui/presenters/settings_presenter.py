@@ -99,8 +99,10 @@ class SettingsPresenter:
             return
 
         self.status = StatusMessage(
-            f"Restored from {Path(backup_path).name}. Your previous data was saved as "
-            f"{Path(safety_backup).name} in case you want it back. {RESTORE_FOLLOW_UP}"
+            f"Done. Your data now matches the backup from {Path(backup_path).name}. "
+            "The data you had right before this restore was automatically saved as "
+            f"{Path(safety_backup).name}, so you can go back to it if you need to. "
+            f"{RESTORE_FOLLOW_UP}"
         )
         self.refresh()
 

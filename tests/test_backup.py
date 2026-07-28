@@ -71,6 +71,25 @@ def test_create_backup_applies_an_optional_label(db_path, backup_dir):
     assert list_backups(backup_dir)[0].label == "pre-migration"
 
 
+def test_description_translates_open_cfos_own_labels_into_plain_language(db_path, backup_dir):
+    """The two labels Open CFO applies on its own ("pre-migration", "pre-restore") are
+    filename slugs, not prose meant for a user to read -- .description is what the UI and
+    CLI show instead."""
+
+    create_backup(label="pre-migration", db_path=db_path, backup_dir=backup_dir)
+
+    description = list_backups(backup_dir)[0].description
+    assert description != "pre-migration"
+    assert "automatic" in description
+
+
+def test_description_passes_through_a_user_supplied_label_unchanged(db_path, backup_dir):
+    create_backup(label="before big import", db_path=db_path, backup_dir=backup_dir)
+
+    backup = list_backups(backup_dir)[0]
+    assert backup.description == backup.label == "before-big-import"
+
+
 def test_labels_are_slugified_into_safe_filenames(db_path, backup_dir):
     backup_path = create_backup(
         label="Before The Big Import!", db_path=db_path, backup_dir=backup_dir

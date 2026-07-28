@@ -32,3 +32,9 @@ dist/
 
 !data/imports/.gitkeep
 !data/exports/.gitkeep
+
+# The blank Excel template is generated (make template), but it's also the easiest way for
+# someone to see the expected shape of their data without cloning the repo and running
+# Python -- committed on purpose so it's browsable and downloadable straight from GitHub.
+# Regenerate and re-commit it whenever SHEETS/EXAMPLE_ROWS in exports/excel_template.py change.
+!data/exports/finance_template.xlsx

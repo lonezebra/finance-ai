@@ -12,8 +12,9 @@ class StrategicAdvisor:
 
     def executive_briefing(
         self,
-        month: str = "2026-06",
+        month: str | None = None,
     ) -> str:
+        """month=None follows the data -- resolved inside create_executive_report()."""
 
         report = create_executive_report(month)
         context = format_executive_report_for_ai(report)
@@ -25,7 +26,7 @@ class StrategicAdvisor:
 
     def chat(
         self,
-        month: str,
+        month: str | None,
         messages: list[dict[str, str]],
     ) -> str:
 

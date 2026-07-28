@@ -426,6 +426,21 @@ derives strengths/concerns, ranks decisions via `generate_decisions_from_db()`.
 **Partially resolved known issue:** `persist=False` (used by the desktop UI's summary cards, which
 render on every page visit) no longer duplicates history on repeated reads. `persist=True`
 (the "Generate Briefing" path) still saves a new snapshot per click, by design — see §8.
+**Done — the hardcoded demo month is gone.** Every consumer (Briefing cards + narrative, AI
+chat context, Scenario Planning, `make briefing`) used to default `month` to the demo
+workbook's `"2026-06"`, so the first real import dated any other month showed $0 income/$0
+expenses everywhere — balances still looked right (not month-scoped), which made it read as
+"positive transactions aren't recognized". Never caught earlier because the demo data is
+itself dated 2026-06, so the wrong default happened to match. Now
+`create_executive_report(month=None)` and `run_scenario(month=None)` resolve via
+`metrics.py::default_report_month()` — the month of the most recent transaction, falling back
+to today's month when there are no transactions — the same follow-the-data rule the Dashboard
+(D7) shipped with, extracted into shared `latest_transaction_month()`. Resolution is lazy
+(per generate/send/run, not at presenter construction) so an import done mid-session is
+picked up; Scenario's "Explain with AI" deliberately reuses the month its on-screen result
+was computed for (`result.baseline_snapshot.month`) rather than re-resolving, so the
+explanation can't describe a different baseline than the cards show. Regression tests in
+`tests/test_default_month.py` reproduce the original symptom end-to-end.
 
 ### AI Architecture
 Principle: *Python calculates. Python structures. AI reasons. AI communicates.*

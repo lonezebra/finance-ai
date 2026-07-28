@@ -29,6 +29,38 @@ class FinancialSnapshot:
     essential_emergency_fund_months: float | None = None
 
 
+def latest_transaction_month(session) -> str | None:
+    """The `YYYY-MM` month of the most recent transaction, or None when there are none."""
+
+    most_recent = session.query(func.max(Transaction.transaction_date)).scalar()
+    if most_recent is None:
+        return None
+    return f"{most_recent.year:04d}-{most_recent.month:02d}"
+
+
+def default_report_month(
+    today: date | None = None,
+    session_factory=SessionLocal,
+) -> str:
+    """The month to report on when the user hasn't picked one.
+
+    Uses the month of the most recent transaction rather than today's calendar month:
+    monthly income/expenses are computed from transactions inside one month, so a page that
+    defaulted to the current calendar month would show $0 income for anyone whose latest
+    import is even a few weeks old -- their money didn't disappear, the page was just
+    looking at an empty month. Falls back to today's month only when there are no
+    transactions at all (nothing to report on either way, but the label should at least be
+    current).
+
+    `today` is injectable for tests, same as calculate_financial_confidence_score().
+    """
+
+    today = today or date.today()
+
+    with session_factory() as session:
+        return latest_transaction_month(session) or f"{today.year:04d}-{today.month:02d}"
+
+
 def month_bounds(month: str) -> tuple[date, date]:
     year, month_number = [int(part) for part in month.split("-")]
 

@@ -32,7 +32,10 @@ class ChatPresenter:
     app restart, kept for the running session.
     """
 
-    def __init__(self, month: str = "2026-06"):
+    def __init__(self, month: str | None = None):
+        # None means "whatever month the data is about", resolved downstream inside
+        # create_executive_report() on every send -- not once at construction, since this
+        # presenter is built at app start and the user may import data afterwards.
         self.month = month
         self.advisor = StrategicAdvisor()
         self.messages: list[ChatMessage] = []

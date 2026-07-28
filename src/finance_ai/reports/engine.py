@@ -2,7 +2,7 @@ from datetime import datetime
 
 from finance_ai.decision.engine import generate_decisions_from_db
 from finance_ai.finance.confidence import calculate_financial_confidence_score
-from finance_ai.finance.metrics import create_financial_snapshot
+from finance_ai.finance.metrics import create_financial_snapshot, default_report_month
 from finance_ai.finance.thresholds import DTI_CONSERVATIVE, DTI_ELEVATED
 from finance_ai.history.comparison import compare_snapshots
 from finance_ai.history.engine import get_latest_snapshot, get_previous_snapshot, save_snapshot
@@ -11,8 +11,15 @@ from finance_ai.history.models import SnapshotRecord
 from finance_ai.reports.models import ExecutiveReport
 
 
-def create_executive_report(month: str, persist: bool = True) -> ExecutiveReport:
+def create_executive_report(month: str | None = None, persist: bool = True) -> ExecutiveReport:
     """Builds an ExecutiveReport for month.
+
+    month=None (what every desktop page passes) means "the month the user's data is
+    actually about": the month of the most recent transaction, per
+    metrics.py::default_report_month. Resolved here, at the choke point every report
+    consumer goes through, rather than in each caller -- a hardcoded per-caller default is
+    exactly the bug this replaces (every page assumed the demo data's month, so real
+    imports dated any other month showed $0 income).
 
     persist=True (the default, used by "Generate Briefing") saves a new snapshot to
     financial_snapshot_records and compares it against the one before it -- an explicit
@@ -23,6 +30,9 @@ def create_executive_report(month: str, persist: bool = True) -> ExecutiveReport
     (e.g. the briefing's summary cards) -- those must not multiply duplicate snapshot rows
     just from being viewed.
     """
+    if month is None:
+        month = default_report_month()
+
     if persist:
         current_record = save_snapshot(month)
         previous_record = get_previous_snapshot()

@@ -14,7 +14,12 @@ from sqlalchemy import func
 
 from finance_ai.db.database import SessionLocal
 from finance_ai.db.models import Account, Asset, Budget, Category, Debt, Transaction
-from finance_ai.finance.metrics import FinancialSnapshot, create_financial_snapshot, month_bounds
+from finance_ai.finance.metrics import (
+    FinancialSnapshot,
+    create_financial_snapshot,
+    latest_transaction_month,
+    month_bounds,
+)
 
 RECENT_TRANSACTIONS_LIMIT = 10
 
@@ -81,22 +86,14 @@ class DashboardData:
 
 
 def _resolve_month(session, month: str | None, today: date) -> str:
-    """The month to show, when the caller doesn't pin one.
-
-    Uses the month of the most recent transaction rather than today's calendar month --
-    a dashboard for a file last imported three months ago should show that month's figures,
-    not a blank current month that makes the app look broken. Falls back to today's month
-    only when there's no transaction data to go by at all.
-    """
+    """The month to show, when the caller doesn't pin one. Same follow-the-data rule as
+    metrics.py::default_report_month (see its docstring for the rationale), reusing this
+    function's already-open session rather than opening a second one."""
 
     if month is not None:
         return month
 
-    most_recent = session.query(func.max(Transaction.transaction_date)).scalar()
-    if most_recent is not None:
-        return f"{most_recent.year:04d}-{most_recent.month:02d}"
-
-    return f"{today.year:04d}-{today.month:02d}"
+    return latest_transaction_month(session) or f"{today.year:04d}-{today.month:02d}"
 
 
 def get_accounts(session) -> list[AccountSummary]:

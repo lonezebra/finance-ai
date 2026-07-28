@@ -14,10 +14,7 @@ from finance_ai.logging_config import configure_logging
 from finance_ai.reports.engine import create_executive_report
 from finance_ai.reports.formatter import format_executive_report_for_ai
 
-DEFAULT_MONTH = "2026-06"
-
-
-def print_briefing(month: str = DEFAULT_MONTH) -> str:
+def print_briefing(month: str | None = None) -> str:
     report = create_executive_report(month, persist=False)
     text = format_executive_report_for_ai(report)
     print(text)
@@ -30,8 +27,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="finance_ai.reports.run_briefing")
     parser.add_argument(
         "--month",
-        default=DEFAULT_MONTH,
-        help=f"Month to report on, as YYYY-MM (default {DEFAULT_MONTH})",
+        default=None,
+        help="Month to report on, as YYYY-MM "
+        "(defaults to the month of your most recent transaction)",
     )
     args = parser.parse_args(argv)
 

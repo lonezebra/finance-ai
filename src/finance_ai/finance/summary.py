@@ -13,6 +13,20 @@ def format_months(value: float) -> str:
     return f"{value:.1f} months"
 
 
+NOT_SET_UP = "not set up yet"
+
+
+def format_optional_months(value: float | None) -> str:
+    """For figures that can be genuinely unknown rather than zero. Says so in plain words
+    instead of showing "0.0 months", which would read as "you have no runway at all"."""
+
+    return NOT_SET_UP if value is None else format_months(value)
+
+
+def format_optional_currency(value: float | None) -> str:
+    return NOT_SET_UP if value is None else format_currency(value)
+
+
 def format_snapshot(snapshot: FinancialSnapshot) -> str:
     return f"""
 Financial Snapshot for {snapshot.month}

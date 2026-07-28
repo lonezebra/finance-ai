@@ -1,4 +1,9 @@
-from finance_ai.finance.summary import format_currency, format_months, format_percent
+from finance_ai.finance.summary import (
+    format_currency,
+    format_months,
+    format_optional_months,
+    format_percent,
+)
 from finance_ai.history.interpreter import interpret_comparison
 from finance_ai.scenario.models import ScenarioResult
 
@@ -43,7 +48,13 @@ def format_scenario_for_ai(result: ScenarioResult) -> str:
     lines.append(f"- Monthly Cash Flow: {format_currency(snapshot.monthly_cash_flow)}")
     lines.append(f"- Savings Rate: {format_percent(snapshot.savings_rate)}")
     lines.append(f"- Debt-to-Income Ratio (take-home): {format_percent(snapshot.debt_to_income_ratio)}")
-    lines.append(f"- Emergency Fund: {format_months(snapshot.emergency_fund_months)}")
+    lines.append(
+        f"- Emergency Fund, at current spending: {format_months(snapshot.emergency_fund_months)}"
+    )
+    lines.append(
+        "- Emergency Fund, essentials only: "
+        f"{format_optional_months(snapshot.essential_emergency_fund_months)}"
+    )
 
     lines.append("")
     lines.append("Projected Top Decisions:")

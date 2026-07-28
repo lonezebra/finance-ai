@@ -1,4 +1,9 @@
-from finance_ai.finance.summary import format_currency, format_months, format_percent
+from finance_ai.finance.summary import (
+    format_currency,
+    format_months,
+    format_optional_months,
+    format_percent,
+)
 from finance_ai.reports.models import ExecutiveReport
 
 
@@ -18,7 +23,11 @@ def format_executive_report_for_ai(report: ExecutiveReport) -> str:
         f"- Monthly Cash Flow: {format_currency(snapshot.monthly_cash_flow)}",
         f"- Savings Rate: {format_percent(snapshot.savings_rate)}",
         f"- Debt-to-Income Ratio (take-home): {format_percent(snapshot.debt_to_income_ratio)}",
-        f"- Emergency Fund: {format_months(snapshot.emergency_fund_months)}",
+        f"- Emergency Fund, at current spending: {format_months(snapshot.emergency_fund_months)}",
+        (
+            "- Emergency Fund, essentials only: "
+            f"{format_optional_months(snapshot.essential_emergency_fund_months)}"
+        ),
         "",
         (
             f"Data Confidence: {report.confidence.score}/100 ({report.confidence.label}) -- "

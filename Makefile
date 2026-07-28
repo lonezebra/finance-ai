@@ -1,4 +1,4 @@
-.PHONY: help activate test reset-db init-db db-migrate db-upgrade backup list-backups restore prune-backups import-demo briefing run status push
+.PHONY: help activate test reset-db init-db db-migrate db-upgrade backup list-backups restore prune-backups template import-demo briefing run status push
 
 help:
 	@echo "Open CFO development commands"
@@ -12,7 +12,8 @@ help:
 	@echo "make list-backups  Show available backups, newest first"
 	@echo "make restore       Restore from a backup (file=backups/finance-....db)"
 	@echo "make prune-backups Delete all but the newest N backups (keep=10)"
-	@echo "make import-demo   Import demo Excel workbook"
+	@echo "make template      Create/refresh the blank Excel template to fill in"
+	@echo "make import-demo   Import the demo Excel workbook (refreshes the template first)"
 	@echo "make briefing      Print Open CFO briefing"
 	@echo "make status        Show git status"
 	@echo "make push          Push commits"
@@ -46,7 +47,10 @@ restore:
 prune-backups:
 	PYTHONPATH=src python -m finance_ai.db.run_backup prune --keep $(or $(keep),10)
 
-import-demo:
+template:
+	PYTHONPATH=src python -m finance_ai.exports.excel_template
+
+import-demo: template
 	PYTHONPATH=src python -m finance_ai.imports.run_import
 
 briefing:

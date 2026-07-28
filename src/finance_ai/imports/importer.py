@@ -187,6 +187,13 @@ def _upsert_categories(
 
         category.category_type = item.category_type
 
+        # Only overwrite when the workbook actually says something. is_essential is None
+        # for "not stated" -- a workbook created before the Essential column existed, or a
+        # blank cell -- and treating that as "no" would silently wipe markings the user had
+        # already made just because they re-imported an older file.
+        if item.is_essential is not None:
+            category.is_essential = item.is_essential
+
         lookup[item.name] = category
 
     return EntityImportResult(created=created, updated=updated), lookup

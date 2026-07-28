@@ -1,6 +1,11 @@
 import customtkinter as ctk
 
-from finance_ai.finance.summary import format_currency, format_months, format_percent
+from finance_ai.finance.summary import (
+    format_currency,
+    format_months,
+    format_optional_months,
+    format_percent,
+)
 from finance_ai.history.interpreter import ChangeDirection
 
 IMPROVED_COLOR = "#2fa572"
@@ -94,7 +99,11 @@ def build_snapshot_card(parent, snapshot) -> ctk.CTkFrame:
         ("Monthly Cash Flow", format_currency(snapshot.monthly_cash_flow)),
         ("Savings Rate", format_percent(snapshot.savings_rate)),
         ("Debt-to-Income (take-home)", format_percent(snapshot.debt_to_income_ratio)),
-        ("Emergency Fund", format_months(snapshot.emergency_fund_months)),
+        ("Emergency Fund (current spending)", format_months(snapshot.emergency_fund_months)),
+        (
+            "Emergency Fund (essentials only)",
+            format_optional_months(snapshot.essential_emergency_fund_months),
+        ),
     ]
 
     body = ctk.CTkFrame(card, fg_color="transparent")

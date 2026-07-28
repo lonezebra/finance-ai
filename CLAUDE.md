@@ -122,7 +122,7 @@ finance-ai/
 │   │   AI_ARCHITECTURE.md, COMMANDS.md, DEVELOPMENT_SETUP.md,
 │   │   RELEASE_CHECKLIST.md, DECISIONS.md, decisions/
 ├── data/
-│   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx
+│   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx (generated, gitignored)
 ├── backups/ (gitignored contents), logs/, reports/
 ├── tests/
 │   ├── test_opportunities.py, test_timeline.py, test_decision_engine.py, test_formatter.py,
@@ -155,7 +155,7 @@ patching existing core files; ask the user for the current file content when in 
 | Table | Key fields |
 |---|---|
 | `accounts` | name, account_type, institution, current_balance, notes |
-| `categories` | name (unique), category_type (income/expense/transfer) |
+| `categories` | name (unique), category_type (income/expense/transfer), is_essential (nullable — see §5) |
 | `transactions` | transaction_date, merchant, description, amount, account_id, category_id, notes — **positive = inflow, negative = expense** |
 | `debts` | name, lender, balance, interest_rate, minimum_payment, due_day, notes |
 | `assets` | name, asset_type, current_value, notes |
@@ -201,7 +201,43 @@ Calculations:
 - `debt_to_income_ratio` = sum(debt minimum payments) / monthly income — **note the basis: this is
   take-home (net) income**, since `monthly_income` is the sum of positive transactions, i.e. money
   that actually landed in an account. Not lender-grade; see the bands note in §5.
-- `emergency_fund_months` = cash_balance / monthly_expenses (uses *all* expenses, not essential-only)
+- `emergency_fund_months` = cash_balance / monthly_expenses (uses *all* expenses) — plus
+  `essential_emergency_fund_months` = cash_balance / essential_monthly_expenses, see §5
+
+### Essentials-only emergency fund
+**Done.** `emergency_fund_months` divides cash by *all* spending, which understates runway —
+in a real emergency people cut discretionary spending first. `categories.is_essential`
+(nullable Boolean, new optional **"Essential"** column in the Categories import sheet, read
+tolerantly by `mapper.py::_optional_bool` — yes/y/true/1 and no/n/false/0) lets the user say
+which spending they couldn't stop paying. From it:
+`essential_monthly_expenses` and `essential_emergency_fund_months` on `FinancialSnapshot`.
+Key decisions:
+- **`None`, not `0.0`, when nothing is marked essential.** "We don't know yet" is a different
+  statement from "you spend nothing on essentials", and 0.0 would render as *no runway at all*.
+  Surfaces as the literal words "not set up yet" via `summary.py::format_optional_months` /
+  `format_optional_currency`, plus a low-severity Confidence Score nudge explaining how to fix
+  it. **This is a deliberate change from the plan originally proposed** (which was to fall back
+  to the all-spending figure): falling back makes the two numbers identical, which silently
+  asserts "all your spending is essential" — a false claim about the user's data that the
+  identical display makes invisible.
+- **Blank and unrecognised cells are "not stated", never "no".** Only spending positively
+  confirmed as essential counts, so the figure can't overstate what the user must keep paying.
+  A typo becomes unknown rather than a confident `False`.
+- **Re-importing a workbook without the Essential column doesn't wipe existing markings**
+  (`importer.py::_upsert_categories` only writes when the value isn't `None`). Otherwise
+  re-importing an older file would silently clear the user's work.
+- **New snapshot fields rather than redefining `emergency_fund_months`.** Redefining it would
+  make every historical `financial_snapshot_records` row mean something different from every
+  new one, and the Timeline Engine would report a large fake "improvement" the month the
+  definition changed. Both new columns are nullable for the same reason — pre-feature snapshots
+  genuinely have no value, and `NULL` says so honestly.
+- **Deliberately NOT added to `METRICS_TO_COMPARE`.** Old snapshots have `NULL` here, so
+  comparing a real value against a coerced `0.0` would produce exactly the fake-improvement
+  report the previous point avoids. Worth adding once history has accumulated real values.
+- **Health Score still uses the all-spending figure.** Switching it would change scoring
+  behaviour, which wasn't in scope for this pass; the essentials figure is currently
+  informational (snapshot card, AI context, scenario output). Reasonable follow-up once users
+  actually populate the flag.
 
 ### Accounts vs Assets: the disjoint contract (and overlap detection)
 **The two tables are defined as mutually exclusive.** Accounts holds liquid balances (the
@@ -401,6 +437,7 @@ make init-db       # create the DB fresh, or migrate an existing one -- both via
 make reset-db      # delete the DB file, recreate it via migrations
 make db-migrate    # message="..." -- generate a new migration from model changes
 make db-upgrade    # apply pending migrations without deleting existing data (same call as init-db)
+make template      # create/refresh the blank Excel template (NOT committed -- generated)
 make backup        # back up the database now (optional label="...")
 make list-backups  # show available backups, newest first
 make restore       # file=backups/finance-....db -- restore, saving current state first
@@ -541,8 +578,8 @@ rather than deferring to one giant hardening pass.
 something like an ease/feasibility multiplier; move decision scoring out of the model property;
 **data-freshness signal for Confidence Score — done, see §5**; **Health Score weighting — two
 concrete defects fixed, see §5; the "score saturates easily" limitation remains open**;
-essential-expense-only emergency fund calc; **asset/account double counting — detection done,
-see §5**; **DTI basis
+**essentials-only emergency fund — done, see §5**; **asset/account double counting — detection
+done, see §5**; **DTI basis
 (gross vs net) — done, see §5**; audit-log integration (import batch integration is done — see
 §10.D); **database backup & restore — done, see §5**.
 

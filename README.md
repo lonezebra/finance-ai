@@ -70,10 +70,52 @@ make run
 
 `make run` launches the desktop app. From there:
 
-- **Import Data** — bring in your own Excel workbook (a starter template lives at `data/exports/finance_template.xlsx`)
+- **Import Data** — bring in your own Excel workbook
 - **Executive Briefing** — your financial snapshot plus an AI-generated narrative (requires LM Studio running)
 - **Scenario Planning** — build a what-if (a raise, an extra debt payment, a windfall, ...) and see the projected impact, with an optional AI explanation (requires LM Studio running)
 - **AI Advisor** — ask an ongoing chat about your finances (requires LM Studio running)
+
+## Use your own data
+
+Open CFO reads from an Excel workbook you fill in yourself. Create a blank one with:
+
+```bash
+make template
+```
+
+That writes `data/exports/finance_template.xlsx` with one sheet per kind of information
+(Accounts, Categories, Transactions, Debts, Assets, Budgets, Goals) and a couple of example
+rows in each to show the shape. Replace the examples with your own figures, then import it
+from the **Import Data** page in the app.
+
+Re-importing the same file later is safe. Accounts, debts, assets, budgets and goals are
+matched by name and updated in place rather than duplicated, and transactions that exactly
+match one already saved are skipped.
+
+### Two things worth knowing when you fill it in
+
+**Accounts and Assets should not overlap.** Put money you can spend now in **Accounts**
+(current account, savings, cash). Put everything else in **Assets** (your home, a car, a
+pension or retirement account). Your net worth adds the two together, so listing the same
+savings pot in both would count it twice. If that happens, Open CFO spots it and tells you
+on the Executive Briefing page rather than quietly giving you a wrong number.
+
+**The "Essential" column tells Open CFO what you could not stop paying.** In the Categories
+sheet, mark a category `yes` if you would still have to pay it after losing your income —
+rent or mortgage, food, utilities, insurance, minimum debt payments. Mark it `no` if you
+could pause it, like eating out or subscriptions. Leave it blank if you are not sure.
+
+That one column gives you a second, more realistic emergency fund figure. Open CFO shows
+both:
+
+- **Emergency Fund (current spending)** — how many months your cash would last if you kept
+  spending exactly as you do now.
+- **Emergency Fund (essentials only)** — how many months it would last if you cut back to
+  just the things you marked essential. This is usually the more useful number, because
+  cutting back is what actually happens in an emergency.
+
+If you leave the Essential column empty everywhere, the second figure shows "not set up yet"
+instead of a made-up number, and the Executive Briefing reminds you how to fill it in.
 
 ## Run the tests
 
@@ -183,7 +225,8 @@ Excel / CSV
   accounts/categories/debts/assets/budgets/goals; exact-match duplicate detection for transactions)
 - Workbook validation
 - Financial Snapshot, Health, and Confidence engines (Confidence Score is surfaced in the
-  Executive Briefing)
+  Executive Briefing, including warnings about stale data and Accounts/Assets overlap)
+- Emergency fund shown two ways: at current spending, and at essential spending only
 - Decision Engine (debt payoff, emergency fund, investment, and goal-funding candidates)
 - Scenario Engine with a desktop UI (income/expense changes, extra debt payments, contribution
   changes, one-time purchases/windfalls; multiple adjustments per scenario), including an

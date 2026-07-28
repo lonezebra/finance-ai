@@ -19,6 +19,9 @@ class AccountImport:
 class CategoryImport:
     name: str
     category_type: str
+    # None when the "Essential" column is absent or the cell is blank -- "not stated",
+    # which is deliberately distinct from an explicit "no".
+    is_essential: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -90,6 +93,26 @@ def _optional_int(value) -> int | None:
     return None if pd.isna(value) else int(value)
 
 
+def _optional_bool(value) -> bool | None:
+    """Reads a yes/no cell tolerantly. Returns None for blanks and for anything we don't
+    recognise, so a typo becomes "not stated" rather than a silent, confident "no"."""
+
+    if value is None or pd.isna(value):
+        return None
+
+    if isinstance(value, bool):
+        return value
+
+    text = str(value).strip().lower()
+
+    if text in {"yes", "y", "true", "t", "1", "essential"}:
+        return True
+    if text in {"no", "n", "false", "f", "0"}:
+        return False
+
+    return None
+
+
 def _optional_date(value) -> date | None:
     if pd.isna(value):
         return None
@@ -134,6 +157,7 @@ def map_categories(workbook: WorkbookData) -> list[CategoryImport]:
         CategoryImport(
             name=str(row["Name"]).strip(),
             category_type=str(row["Category Type"]).strip().lower(),
+            is_essential=_optional_bool(row.get("Essential")),
         )
         for _, row in df.iterrows()
     ]

@@ -11,5 +11,8 @@ class ExecutiveReportPresenter:
     deliberate check-in.
     """
 
-    def get_report(self, month: str = "2026-06") -> ExecutiveReport:
+    def get_report(self, month: str | None = None) -> ExecutiveReport:
+        """month=None follows the data (the month of the most recent transaction) --
+        resolved inside create_executive_report()."""
+
         return create_executive_report(month, persist=False)

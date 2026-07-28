@@ -246,3 +246,170 @@ def build_decisions_card(parent, decisions) -> ctk.CTkFrame:
         reasoning.pack(anchor="w", pady=(0, 4))
 
     return card
+
+
+def _empty_row(body, text: str) -> None:
+    ctk.CTkLabel(body, text=text, text_color="gray60", anchor="w").pack(anchor="w", pady=2)
+
+
+def build_accounts_card(parent, accounts) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Accounts")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    if not accounts:
+        _empty_row(body, "No accounts have been added yet.")
+        return card
+
+    for account in accounts:
+        detail = account.account_type.replace("_", " ").title()
+        if account.institution:
+            detail = f"{detail}  ·  {account.institution}"
+
+        row = ctk.CTkFrame(body, fg_color="transparent")
+        row.grid_columnconfigure(0, weight=1)
+        row.pack(fill="x", pady=2)
+
+        ctk.CTkLabel(row, text=account.name, anchor="w").grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(row, text=detail, text_color="gray60", anchor="w").grid(
+            row=1, column=0, sticky="w"
+        )
+        ctk.CTkLabel(
+            row, text=format_currency(account.balance), font=ctk.CTkFont(weight="bold")
+        ).grid(row=0, column=1, rowspan=2, sticky="e", padx=(10, 0))
+
+    return card
+
+
+def build_debts_card(parent, debts) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Debts")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    if not debts:
+        _empty_row(body, "No debts have been added yet.")
+        return card
+
+    for debt in debts:
+        details = []
+        if debt.lender:
+            details.append(debt.lender)
+        if debt.interest_rate is not None:
+            details.append(f"{debt.interest_rate:.1f}% APR")
+        if debt.minimum_payment is not None:
+            details.append(f"{format_currency(debt.minimum_payment)}/mo minimum")
+        detail_text = "  ·  ".join(details) if details else "No further details recorded."
+
+        row = ctk.CTkFrame(body, fg_color="transparent")
+        row.grid_columnconfigure(0, weight=1)
+        row.pack(fill="x", pady=2)
+
+        ctk.CTkLabel(row, text=debt.name, anchor="w").grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(row, text=detail_text, text_color="gray60", anchor="w").grid(
+            row=1, column=0, sticky="w"
+        )
+        ctk.CTkLabel(
+            row, text=format_currency(debt.balance), font=ctk.CTkFont(weight="bold")
+        ).grid(row=0, column=1, rowspan=2, sticky="e", padx=(10, 0))
+
+    return card
+
+
+def build_assets_card(parent, assets) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Assets")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    if not assets:
+        _empty_row(body, "No assets have been added yet.")
+        return card
+
+    for asset in assets:
+        row = ctk.CTkFrame(body, fg_color="transparent")
+        row.grid_columnconfigure(0, weight=1)
+        row.pack(fill="x", pady=2)
+
+        ctk.CTkLabel(row, text=asset.name, anchor="w").grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(
+            row, text=asset.asset_type.replace("_", " ").title(), text_color="gray60", anchor="w"
+        ).grid(row=1, column=0, sticky="w")
+        ctk.CTkLabel(
+            row, text=format_currency(asset.value), font=ctk.CTkFont(weight="bold")
+        ).grid(row=0, column=1, rowspan=2, sticky="e", padx=(10, 0))
+
+    return card
+
+
+def build_recent_transactions_card(parent, transactions) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Recent Transactions")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    if not transactions:
+        _empty_row(body, "No transactions have been imported yet.")
+        return card
+
+    for transaction in transactions:
+        category = f"  ·  {transaction.category_name}" if transaction.category_name else ""
+        detail = f"{transaction.transaction_date:%d %b %Y}{category}"
+        color = IMPROVED_COLOR if transaction.amount > 0 else None
+
+        row = ctk.CTkFrame(body, fg_color="transparent")
+        row.grid_columnconfigure(0, weight=1)
+        row.pack(fill="x", pady=2)
+
+        ctk.CTkLabel(row, text=transaction.description, anchor="w").grid(
+            row=0, column=0, sticky="w"
+        )
+        ctk.CTkLabel(row, text=detail, text_color="gray60", anchor="w").grid(
+            row=1, column=0, sticky="w"
+        )
+        amount_label = ctk.CTkLabel(
+            row, text=format_currency(transaction.amount), font=ctk.CTkFont(weight="bold")
+        )
+        if color:
+            amount_label.configure(text_color=color)
+        amount_label.grid(row=0, column=1, rowspan=2, sticky="e", padx=(10, 0))
+
+    return card
+
+
+def build_budget_status_card(parent, budget_lines) -> ctk.CTkFrame:
+    card = _card_frame(parent, "Budget Status")
+    body = ctk.CTkFrame(card, fg_color="transparent")
+    body.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
+    body.grid_columnconfigure(0, weight=1)
+
+    if not budget_lines:
+        _empty_row(body, "No budgets have been set for this month.")
+        return card
+
+    for line in budget_lines:
+        color = WORSENED_COLOR if line.is_over_budget else IMPROVED_COLOR
+        detail = (
+            f"{format_currency(line.actual_amount)} of {format_currency(line.budgeted_amount)} "
+            f"budgeted"
+        )
+
+        row = ctk.CTkFrame(body, fg_color="transparent")
+        row.grid_columnconfigure(0, weight=1)
+        row.pack(fill="x", pady=2)
+
+        ctk.CTkLabel(row, text=line.category_name, anchor="w").grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(row, text=detail, text_color="gray60", anchor="w").grid(
+            row=1, column=0, sticky="w"
+        )
+        variance_text = (
+            f"{format_currency(abs(line.variance))} over"
+            if line.is_over_budget
+            else f"{format_currency(line.variance)} left"
+        )
+        ctk.CTkLabel(row, text=variance_text, text_color=color, font=ctk.CTkFont(weight="bold")).grid(
+            row=0, column=1, rowspan=2, sticky="e", padx=(10, 0)
+        )
+
+    return card

@@ -2,9 +2,11 @@ import customtkinter as ctk
 
 from finance_ai.ui.briefing_view import BriefingView
 from finance_ai.ui.chat_view import ChatView
+from finance_ai.ui.dashboard_view import DashboardView
 from finance_ai.ui.import_view import ImportView
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter
 from finance_ai.ui.presenters.chat_presenter import ChatPresenter
+from finance_ai.ui.presenters.dashboard_presenter import DashboardPresenter
 from finance_ai.ui.presenters.scenario_presenter import ScenarioPresenter
 from finance_ai.ui.presenters.settings_presenter import SettingsPresenter
 from finance_ai.ui.scenario_view import ScenarioView
@@ -38,6 +40,9 @@ class MainWindow(ctk.CTk):
         # Owned here for consistency with the others, though Settings holds no in-flight
         # work -- its state is just the backup list and the last status message.
         self.settings_presenter = SettingsPresenter()
+
+        # Same reasoning as Settings: no in-flight work, just the last read and any error.
+        self.dashboard_presenter = DashboardPresenter()
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -116,6 +121,11 @@ class MainWindow(ctk.CTk):
         view = SettingsView(self.content, presenter=self.settings_presenter)
         view.grid(row=0, column=0, sticky="nsew")
 
+    def _show_dashboard(self):
+        self._clear_content()
+        view = DashboardView(self.content, presenter=self.dashboard_presenter)
+        view.grid(row=0, column=0, sticky="nsew")
+
     def _show_placeholder(self, name: str):
         if name == "Executive Briefing":
             self._show_briefing()
@@ -135,6 +145,10 @@ class MainWindow(ctk.CTk):
 
         if name == "Settings":
             self._show_settings()
+            return
+
+        if name == "Dashboard":
+            self._show_dashboard()
             return
 
         self._clear_content()

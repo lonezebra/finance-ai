@@ -37,7 +37,10 @@ class BriefingPresenter:
     widget (the root window) rather than the page-scoped view.
     """
 
-    def __init__(self, month: str = "2026-06"):
+    def __init__(self, month: str | None = None):
+        # None means "whatever month the data is about", resolved downstream inside
+        # create_executive_report() on every generate -- not once at construction, since
+        # this presenter is built at app start and the user may import data afterwards.
         self.month = month
         self.advisor = StrategicAdvisor()
         self.animator = ThinkingAnimator(

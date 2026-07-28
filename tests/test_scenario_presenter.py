@@ -111,8 +111,56 @@ def test_run_scenario_builds_scenario_from_adjustments_and_stores_result():
     assert presenter.narrative_text is None
 
 
+def test_run_scenario_resolves_the_month_lazily_when_none_was_given():
+    """The presenter is built at app start; an import can land afterwards. Resolving on
+    every Run Scenario (not at construction) means the scenario follows the data."""
+
+    captured = {}
+    months = iter(["2026-05", "2026-07"])  # as if an import landed between runs
+
+    def fake_run_scenario(month, scenario):
+        captured["month"] = month
+        captured["name"] = scenario.name
+        return make_scenario_result(scenario)
+
+    presenter = ScenarioPresenter(
+        run_scenario_fn=fake_run_scenario, default_month_fn=lambda: next(months)
+    )
+    presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
+
+    presenter.run_scenario()
+    assert captured["month"] == "2026-05"
+    assert captured["name"] == "Scenario for 2026-05"
+
+    presenter.run_scenario()
+    assert captured["month"] == "2026-07"
+
+
+def test_explain_with_ai_uses_the_month_the_result_was_computed_for():
+    """If data changes between Run Scenario and Explain, the explanation should describe
+    the projection on screen, not a re-resolved month's baseline."""
+
+    advisor = _FakeAdvisor(reply="Reply")
+    presenter = ScenarioPresenter(
+        run_scenario_fn=lambda month, s: make_scenario_result(s),
+        advisor=advisor,
+        default_month_fn=lambda: "2026-07",
+    )
+    presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
+    presenter.run_scenario()
+
+    presenter.explain_with_ai(_FakeWidget())
+    _drain(presenter)
+
+    # make_scenario_result's baseline snapshot is for 2026-06 -- that's what must be passed.
+    assert advisor.calls[0][0] == "2026-06"
+
+
 def test_running_a_new_scenario_resets_previous_narrative():
-    presenter = ScenarioPresenter(run_scenario_fn=lambda month, s: make_scenario_result(s))
+    presenter = ScenarioPresenter(
+        run_scenario_fn=lambda month, s: make_scenario_result(s),
+        default_month_fn=lambda: "2026-06",
+    )
     presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
     presenter.run_scenario()
 
@@ -139,6 +187,7 @@ def test_explain_with_ai_delivers_reply():
     presenter = ScenarioPresenter(
         run_scenario_fn=lambda month, s: make_scenario_result(s),
         advisor=_FakeAdvisor(reply="This looks like a solid plan."),
+        default_month_fn=lambda: "2026-06",
     )
     presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
     presenter.run_scenario()
@@ -154,6 +203,7 @@ def test_explain_with_ai_error_becomes_friendly_message():
     presenter = ScenarioPresenter(
         run_scenario_fn=lambda month, s: make_scenario_result(s),
         advisor=_FakeAdvisor(error=ValueError("boom")),
+        default_month_fn=lambda: "2026-06",
     )
     presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
     presenter.run_scenario()
@@ -181,7 +231,9 @@ def test_explain_with_ai_ignored_while_already_running():
 
     advisor = _BlockingAdvisor()
     presenter = ScenarioPresenter(
-        run_scenario_fn=lambda month, s: make_scenario_result(s), advisor=advisor
+        run_scenario_fn=lambda month, s: make_scenario_result(s),
+        advisor=advisor,
+        default_month_fn=lambda: "2026-06",
     )
     presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
     presenter.run_scenario()
@@ -196,7 +248,10 @@ def test_explain_with_ai_ignored_while_already_running():
 
 
 def test_reattaching_replays_via_immediate_on_change_call():
-    presenter = ScenarioPresenter(run_scenario_fn=lambda month, s: make_scenario_result(s))
+    presenter = ScenarioPresenter(
+        run_scenario_fn=lambda month, s: make_scenario_result(s),
+        default_month_fn=lambda: "2026-06",
+    )
     presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
     presenter.run_scenario()
     presenter.detach()
@@ -216,6 +271,7 @@ def test_dead_widget_callback_self_heals_instead_of_raising():
     presenter = ScenarioPresenter(
         run_scenario_fn=lambda month, s: make_scenario_result(s),
         advisor=_FakeAdvisor(reply="Reply"),
+        default_month_fn=lambda: "2026-06",
     )
     presenter.add_adjustment(AdjustmentType.INCOME_CHANGE, 500, "Raise")
     presenter.run_scenario()

@@ -29,7 +29,39 @@ class FinancialSnapshot:
     essential_emergency_fund_months: float | None = None
 
 
-def _month_bounds(month: str) -> tuple[date, date]:
+def latest_transaction_month(session) -> str | None:
+    """The `YYYY-MM` month of the most recent transaction, or None when there are none."""
+
+    most_recent = session.query(func.max(Transaction.transaction_date)).scalar()
+    if most_recent is None:
+        return None
+    return f"{most_recent.year:04d}-{most_recent.month:02d}"
+
+
+def default_report_month(
+    today: date | None = None,
+    session_factory=SessionLocal,
+) -> str:
+    """The month to report on when the user hasn't picked one.
+
+    Uses the month of the most recent transaction rather than today's calendar month:
+    monthly income/expenses are computed from transactions inside one month, so a page that
+    defaulted to the current calendar month would show $0 income for anyone whose latest
+    import is even a few weeks old -- their money didn't disappear, the page was just
+    looking at an empty month. Falls back to today's month only when there are no
+    transactions at all (nothing to report on either way, but the label should at least be
+    current).
+
+    `today` is injectable for tests, same as calculate_financial_confidence_score().
+    """
+
+    today = today or date.today()
+
+    with session_factory() as session:
+        return latest_transaction_month(session) or f"{today.year:04d}-{today.month:02d}"
+
+
+def month_bounds(month: str) -> tuple[date, date]:
     year, month_number = [int(part) for part in month.split("-")]
 
     start = date(year, month_number, 1)
@@ -80,7 +112,7 @@ def get_cash_balance(session) -> float:
 
 
 def get_monthly_income(session, month: str) -> float:
-    start, end = _month_bounds(month)
+    start, end = month_bounds(month)
 
     total = (
         session.query(func.coalesce(func.sum(Transaction.amount), 0))
@@ -94,7 +126,7 @@ def get_monthly_income(session, month: str) -> float:
 
 
 def get_monthly_expenses(session, month: str) -> float:
-    start, end = _month_bounds(month)
+    start, end = month_bounds(month)
 
     total = (
         session.query(func.coalesce(func.sum(Transaction.amount), 0))
@@ -126,7 +158,7 @@ def get_monthly_essential_expenses(session, month: str) -> float | None:
     if not any_marked:
         return None
 
-    start, end = _month_bounds(month)
+    start, end = month_bounds(month)
 
     total = (
         session.query(func.coalesce(func.sum(Transaction.amount), 0))
@@ -146,39 +178,54 @@ def get_monthly_debt_payments(session) -> float:
     return float(total)
 
 
-def create_financial_snapshot(month: str) -> FinancialSnapshot:
+def create_financial_snapshot(month: str, session=None) -> FinancialSnapshot:
+    """Build the snapshot for month.
+
+    Pass an open `session` to compute this as part of a larger read that already has one
+    open (e.g. the Dashboard, which shares a single session across several queries and needs
+    to inject a fake one in tests). Omit it to open and close a real one here, same as
+    before -- every existing caller keeps working unchanged.
+    """
+
+    if session is not None:
+        return _build_snapshot(session, month)
+
     with SessionLocal() as session:
-        total_assets = get_total_assets(session)
-        total_debt = get_total_debt(session)
-        cash_balance = get_cash_balance(session)
-        monthly_income = get_monthly_income(session, month)
-        monthly_expenses = get_monthly_expenses(session, month)
-        monthly_cash_flow = monthly_income - monthly_expenses
-        monthly_debt_payments = get_monthly_debt_payments(session)
+        return _build_snapshot(session, month)
 
-        savings_rate = _safe_divide(monthly_cash_flow, monthly_income)
-        debt_to_income_ratio = _safe_divide(monthly_debt_payments, monthly_income)
-        emergency_fund_months = _safe_divide(cash_balance, monthly_expenses)
 
-        essential_monthly_expenses = get_monthly_essential_expenses(session, month)
-        essential_emergency_fund_months = (
-            _safe_divide(cash_balance, essential_monthly_expenses)
-            if essential_monthly_expenses is not None
-            else None
-        )
+def _build_snapshot(session, month: str) -> FinancialSnapshot:
+    total_assets = get_total_assets(session)
+    total_debt = get_total_debt(session)
+    cash_balance = get_cash_balance(session)
+    monthly_income = get_monthly_income(session, month)
+    monthly_expenses = get_monthly_expenses(session, month)
+    monthly_cash_flow = monthly_income - monthly_expenses
+    monthly_debt_payments = get_monthly_debt_payments(session)
 
-        return FinancialSnapshot(
-            month=month,
-            total_assets=total_assets,
-            total_debt=total_debt,
-            net_worth=total_assets - total_debt,
-            cash_balance=cash_balance,
-            monthly_income=monthly_income,
-            monthly_expenses=monthly_expenses,
-            monthly_cash_flow=monthly_cash_flow,
-            savings_rate=savings_rate,
-            debt_to_income_ratio=debt_to_income_ratio,
-            emergency_fund_months=emergency_fund_months,
-            essential_monthly_expenses=essential_monthly_expenses,
-            essential_emergency_fund_months=essential_emergency_fund_months,
-        )
+    savings_rate = _safe_divide(monthly_cash_flow, monthly_income)
+    debt_to_income_ratio = _safe_divide(monthly_debt_payments, monthly_income)
+    emergency_fund_months = _safe_divide(cash_balance, monthly_expenses)
+
+    essential_monthly_expenses = get_monthly_essential_expenses(session, month)
+    essential_emergency_fund_months = (
+        _safe_divide(cash_balance, essential_monthly_expenses)
+        if essential_monthly_expenses is not None
+        else None
+    )
+
+    return FinancialSnapshot(
+        month=month,
+        total_assets=total_assets,
+        total_debt=total_debt,
+        net_worth=total_assets - total_debt,
+        cash_balance=cash_balance,
+        monthly_income=monthly_income,
+        monthly_expenses=monthly_expenses,
+        monthly_cash_flow=monthly_cash_flow,
+        savings_rate=savings_rate,
+        debt_to_income_ratio=debt_to_income_ratio,
+        emergency_fund_months=emergency_fund_months,
+        essential_monthly_expenses=essential_monthly_expenses,
+        essential_emergency_fund_months=essential_emergency_fund_months,
+    )

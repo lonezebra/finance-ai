@@ -427,6 +427,21 @@ derives strengths/concerns, ranks decisions via `generate_decisions_from_db()`.
 **Partially resolved known issue:** `persist=False` (used by the desktop UI's summary cards, which
 render on every page visit) no longer duplicates history on repeated reads. `persist=True`
 (the "Generate Briefing" path) still saves a new snapshot per click, by design — see §8.
+**Done — the hardcoded demo month is gone.** Every consumer (Briefing cards + narrative, AI
+chat context, Scenario Planning, `make briefing`) used to default `month` to the demo
+workbook's `"2026-06"`, so the first real import dated any other month showed $0 income/$0
+expenses everywhere — balances still looked right (not month-scoped), which made it read as
+"positive transactions aren't recognized". Never caught earlier because the demo data is
+itself dated 2026-06, so the wrong default happened to match. Now
+`create_executive_report(month=None)` and `run_scenario(month=None)` resolve via
+`metrics.py::default_report_month()` — the month of the most recent transaction, falling back
+to today's month when there are no transactions — the same follow-the-data rule the Dashboard
+(D7) shipped with, extracted into shared `latest_transaction_month()`. Resolution is lazy
+(per generate/send/run, not at presenter construction) so an import done mid-session is
+picked up; Scenario's "Explain with AI" deliberately reuses the month its on-screen result
+was computed for (`result.baseline_snapshot.month`) rather than re-resolving, so the
+explanation can't describe a different baseline than the cards show. Regression tests in
+`tests/test_default_month.py` reproduce the original symptom end-to-end.
 
 ### AI Architecture
 Principle: *Python calculates. Python structures. AI reasons. AI communicates.*
@@ -529,8 +544,12 @@ rather than deferring to one giant hardening pass.
 - **Error handling:** every user-facing entry point (desktop UI, CLI commands) should fail with a
   message a non-technical user could act on, not a raw traceback. Current gap: only a handful of
   files anywhere in `src/` have any `try`/`except` at all (`ai/background.py`'s catch-and-forward
-  pattern and `ai/errors.py`'s friendly LM Studio message are the model to follow); DB-missing or
-  DB-empty states aren't handled anywhere.
+  pattern and `ai/errors.py`'s friendly LM Studio message are the model to follow); most read
+  paths still don't handle a missing or locked database. **Partial exception:**
+  `DashboardPresenter.refresh()` (see §10.D7) catches `SQLAlchemyError`/`OSError` and surfaces a
+  status message instead of crashing — the one read path that does this so far, not a sweep of
+  the rest (`ExecutiveReportPresenter`, the Scenario/Chat presenters' underlying reads, etc. are
+  still unguarded).
 - **Security:** calibrated to this app's actual threat model — local-first, single-user, no
   network exposure beyond the localhost LM Studio call, no auth needed. All DB access already goes
   through the SQLAlchemy ORM (no raw SQL found, no injection surface). Known gap: the SQLite file
@@ -706,6 +725,30 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   synchronous (a ~60KB file copy is instant, so no `BackgroundTask` needed). Restore confirms
   via `tkinter.messagebox.askyesno` before acting — the dialog is in the view so the presenter
   stays testable headless. See §5 for the staleness finding.
+- D7 (Dashboard): **Done.** The Product Spec's Dashboard section (Snapshot / What Changed /
+  What Needs Attention / Recommended Actions) overlaps almost entirely with what the Executive
+  Briefing already shows via the Executive Report Engine, so scope was narrowed deliberately:
+  Dashboard is the fast, no-AI landing page — current balances, recent activity, and budget
+  status, nothing narrated, nothing that depends on LM Studio being open. New Finance Engine
+  module `finance/dashboard.py::create_dashboard_data()` assembles a `DashboardData` (snapshot,
+  accounts, debts, assets, last 10 transactions, per-category budget-vs-actual for the month)
+  from one shared session, sorted by size (largest account/debt/asset first) so the biggest
+  numbers don't require scrolling to find. The month defaults to whichever month the most
+  recent transaction falls in, not today's calendar month or a hardcoded demo month — a
+  dashboard for data last imported months ago should show that month's figures, not a blank
+  "no data" screen for the current one. `DashboardPresenter` follows the same
+  `attach()`/`detach()` + injectable-dependency pattern as `SettingsPresenter`, owned by
+  `MainWindow` for consistency though it holds no in-flight work; unlike every other read path
+  in the app it also catches `SQLAlchemyError`, not just `OSError`, and turns it into a status
+  message rather than a crash — one of the concrete gaps §8's Cross-Cutting Concerns Checklist
+  calls out (no read path handles a missing/locked database) and worth closing on new surface
+  area even though the checklist itself stays open elsewhere. `create_financial_snapshot()`
+  gained an optional `session` parameter (falls back to opening its own when omitted, so every
+  existing caller is unaffected) purely so the Dashboard could share one session across all its
+  queries and stay fully testable against an in-memory database rather than the real file DB.
+  `report_cards.py` gained five new card builders (`build_accounts_card`, `build_debts_card`,
+  `build_assets_card`, `build_recent_transactions_card`, `build_budget_status_card`);
+  `build_snapshot_card` is reused as-is rather than duplicated.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

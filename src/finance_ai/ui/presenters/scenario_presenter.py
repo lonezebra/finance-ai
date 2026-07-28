@@ -4,6 +4,7 @@ from enum import Enum
 from finance_ai.ai.advisor import StrategicAdvisor
 from finance_ai.ai.background import BackgroundTask
 from finance_ai.ai.errors import describe_ai_error
+from finance_ai.finance.metrics import default_report_month
 from finance_ai.scenario.engine import run_scenario as _run_scenario
 from finance_ai.scenario.models import AdjustmentType, Scenario, ScenarioAdjustment, ScenarioResult
 
@@ -28,12 +29,19 @@ class ScenarioPresenter:
 
     def __init__(
         self,
-        month: str = "2026-06",
+        month: str | None = None,
         run_scenario_fn=_run_scenario,
         advisor: StrategicAdvisor | None = None,
+        default_month_fn=default_report_month,
     ):
+        # None means "whatever month the data is about", resolved via default_month_fn on
+        # every Run Scenario -- not once at construction, since this presenter is built at
+        # app start and the user may import data afterwards. Resolved here rather than
+        # left to run_scenario()'s own None-handling because the month is also part of the
+        # scenario's name, which is built before the engine runs.
         self.month = month
         self._run_scenario_fn = run_scenario_fn
+        self._default_month_fn = default_month_fn
         self.advisor = advisor or StrategicAdvisor()
 
         self.adjustments: list[ScenarioAdjustment] = []
@@ -66,8 +74,9 @@ class ScenarioPresenter:
         if not self.adjustments:
             return
 
-        scenario = Scenario(name=f"Scenario for {self.month}", adjustments=list(self.adjustments))
-        self.result = self._run_scenario_fn(self.month, scenario)
+        month = self.month or self._default_month_fn()
+        scenario = Scenario(name=f"Scenario for {month}", adjustments=list(self.adjustments))
+        self.result = self._run_scenario_fn(month, scenario)
         self.narrative_state = NarrativeState.IDLE
         self.narrative_text = None
         self._notify()
@@ -80,8 +89,12 @@ class ScenarioPresenter:
         self._notify()
 
         scenario = self.result.scenario
+        # The month the result was actually computed for, not a re-resolved one -- if an
+        # import lands between Run Scenario and Explain, the explanation should describe
+        # the projection on screen, not a different month's baseline.
+        month = self.result.baseline_snapshot.month
         self._task = BackgroundTask(
-            target=lambda: self.advisor.explain_scenario(self.month, scenario),
+            target=lambda: self.advisor.explain_scenario(month, scenario),
             on_success=self._handle_success,
             on_error=self._handle_error,
         )

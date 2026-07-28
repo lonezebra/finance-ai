@@ -1,7 +1,11 @@
 from datetime import datetime
 
 from finance_ai.decision.engine import generate_decisions_from_db
-from finance_ai.finance.metrics import FinancialSnapshot, create_financial_snapshot
+from finance_ai.finance.metrics import (
+    FinancialSnapshot,
+    create_financial_snapshot,
+    default_report_month,
+)
 from finance_ai.finance.summary import format_currency
 from finance_ai.history.comparison import compare_snapshots
 from finance_ai.history.models import SnapshotRecord
@@ -98,7 +102,13 @@ def apply_adjustments(
     return projected, facts
 
 
-def run_scenario(month: str, scenario: Scenario) -> ScenarioResult:
+def run_scenario(month: str | None, scenario: Scenario) -> ScenarioResult:
+    """month=None resolves to the month of the most recent transaction, same rule as
+    create_executive_report -- see metrics.py::default_report_month."""
+
+    if month is None:
+        month = default_report_month()
+
     baseline = create_financial_snapshot(month)
     projected, facts = apply_adjustments(baseline, scenario.adjustments)
 

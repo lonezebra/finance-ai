@@ -525,8 +525,12 @@ rather than deferring to one giant hardening pass.
 - **Error handling:** every user-facing entry point (desktop UI, CLI commands) should fail with a
   message a non-technical user could act on, not a raw traceback. Current gap: only a handful of
   files anywhere in `src/` have any `try`/`except` at all (`ai/background.py`'s catch-and-forward
-  pattern and `ai/errors.py`'s friendly LM Studio message are the model to follow); DB-missing or
-  DB-empty states aren't handled anywhere.
+  pattern and `ai/errors.py`'s friendly LM Studio message are the model to follow); most read
+  paths still don't handle a missing or locked database. **Partial exception:**
+  `DashboardPresenter.refresh()` (see §10.D7) catches `SQLAlchemyError`/`OSError` and surfaces a
+  status message instead of crashing — the one read path that does this so far, not a sweep of
+  the rest (`ExecutiveReportPresenter`, the Scenario/Chat presenters' underlying reads, etc. are
+  still unguarded).
 - **Security:** calibrated to this app's actual threat model — local-first, single-user, no
   network exposure beyond the localhost LM Studio call, no auth needed. All DB access already goes
   through the SQLAlchemy ORM (no raw SQL found, no injection surface). Known gap: the SQLite file
@@ -702,6 +706,30 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   synchronous (a ~60KB file copy is instant, so no `BackgroundTask` needed). Restore confirms
   via `tkinter.messagebox.askyesno` before acting — the dialog is in the view so the presenter
   stays testable headless. See §5 for the staleness finding.
+- D7 (Dashboard): **Done.** The Product Spec's Dashboard section (Snapshot / What Changed /
+  What Needs Attention / Recommended Actions) overlaps almost entirely with what the Executive
+  Briefing already shows via the Executive Report Engine, so scope was narrowed deliberately:
+  Dashboard is the fast, no-AI landing page — current balances, recent activity, and budget
+  status, nothing narrated, nothing that depends on LM Studio being open. New Finance Engine
+  module `finance/dashboard.py::create_dashboard_data()` assembles a `DashboardData` (snapshot,
+  accounts, debts, assets, last 10 transactions, per-category budget-vs-actual for the month)
+  from one shared session, sorted by size (largest account/debt/asset first) so the biggest
+  numbers don't require scrolling to find. The month defaults to whichever month the most
+  recent transaction falls in, not today's calendar month or a hardcoded demo month — a
+  dashboard for data last imported months ago should show that month's figures, not a blank
+  "no data" screen for the current one. `DashboardPresenter` follows the same
+  `attach()`/`detach()` + injectable-dependency pattern as `SettingsPresenter`, owned by
+  `MainWindow` for consistency though it holds no in-flight work; unlike every other read path
+  in the app it also catches `SQLAlchemyError`, not just `OSError`, and turns it into a status
+  message rather than a crash — one of the concrete gaps §8's Cross-Cutting Concerns Checklist
+  calls out (no read path handles a missing/locked database) and worth closing on new surface
+  area even though the checklist itself stays open elsewhere. `create_financial_snapshot()`
+  gained an optional `session` parameter (falls back to opening its own when omitted, so every
+  existing caller is unaffected) purely so the Dashboard could share one session across all its
+  queries and stay fully testable against an in-memory database rather than the real file DB.
+  `report_cards.py` gained five new card builders (`build_accounts_card`, `build_debts_card`,
+  `build_assets_card`, `build_recent_transactions_card`, `build_budget_status_card`);
+  `build_snapshot_card` is reused as-is rather than duplicated.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

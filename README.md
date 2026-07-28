@@ -70,6 +70,7 @@ make run
 
 `make run` launches the desktop app. From there:
 
+- **Dashboard** — a fast, no-AI landing page: current balances, recent transactions, and budget status, works without LM Studio running
 - **Import Data** — bring in your own Excel workbook
 - **Executive Briefing** — your financial snapshot plus an AI-generated narrative (requires LM Studio running)
 - **Scenario Planning** — build a what-if (a raise, an extra debt payment, a windfall, ...) and see the projected impact, with an optional AI explanation (requires LM Studio running)
@@ -255,13 +256,15 @@ Excel / CSV
   Executive Briefing, including warnings about stale data and Accounts/Assets overlap)
 - Emergency fund shown two ways: at current spending, and at essential spending only
 - Database backup and restore, from the Settings page or the command line
+- Dashboard: current account/debt/asset balances, recent transactions, and per-category budget
+  status, all deterministic and available without LM Studio
 - Decision Engine (debt payoff, emergency fund, investment, and goal-funding candidates)
 - Scenario Engine with a desktop UI (income/expense changes, extra debt payments, contribution
   changes, one-time purchases/windfalls; multiple adjustments per scenario), including an
   on-demand AI explanation of the projection
 - Executive Briefing (deterministic snapshot cards plus an AI-generated narrative)
-- Desktop app (CustomTkinter): Executive Briefing, Scenario Planning, Import Data, and AI Advisor
-  chat, and Settings (backup/restore) are functional; Dashboard, Accounts, Transactions, Debt,
+- Desktop app (CustomTkinter): Dashboard, Executive Briefing, Scenario Planning, Import Data, AI
+  Advisor chat, and Settings (backup/restore) are functional; Accounts, Transactions, Debt,
   Assets, Budget, Goals and Reports are still placeholders
 - Local AI Runtime and Strategic Advisor (LM Studio), including a multi-turn chat
 - Prompt Library
@@ -279,8 +282,8 @@ Excel import and validation with idempotent re-import, the desktop shell, the St
 
 ## Version 0.7 — in progress (public beta readiness)
 
-- Dashboard and the remaining placeholder pages (Accounts, Transactions, Debt, Assets, Budget,
-  Goals, Reports, Settings)
+- Dashboard and Settings (backup/restore) are done; remaining placeholder pages: Accounts,
+  Transactions, Debt, Assets, Budget, Goals, Reports
 
 ## Version 1.0
 

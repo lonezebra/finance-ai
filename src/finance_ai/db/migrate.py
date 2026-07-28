@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, inspect
 
 from alembic import command
 from finance_ai.config import PROJECT_ROOT
+from finance_ai.db.backup import BackupError, create_backup
 from finance_ai.db.database import get_engine
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,11 @@ def _make_engine(db_path: Path | str | None):
     return create_engine(f"sqlite:///{db_path}", future=True)
 
 
-def ensure_schema_up_to_date(db_path: Path | str | None = None) -> None:
+def ensure_schema_up_to_date(
+    db_path: Path | str | None = None,
+    backup_before_upgrade: bool = True,
+    backup_dir: Path | str | None = None,
+) -> None:
     """Brings the database schema up to the latest migration. Handles three cases:
 
     - No database file yet, or one with no tables: a fresh install. Alembic creates every
@@ -59,6 +64,15 @@ def ensure_schema_up_to_date(db_path: Path | str | None = None) -> None:
 
     db_path defaults to the real app database (finance_ai.config.DB_PATH via get_engine());
     only tests pass a different path.
+
+    backup_before_upgrade takes an automatic backup when, and only when, migrations are
+    actually going to be applied to a database that already holds data. Since this runs on
+    every startup, backing up unconditionally would produce a backup per launch; gating it
+    on "there is pending work to do" keeps it to the moments that carry real risk -- a
+    schema change against real financial data.
+
+    backup_dir defaults to the real BACKUP_DIR; it's a parameter for the same reason
+    db_path is, so tests don't write into the user's actual backups directory.
     """
 
     engine = _make_engine(db_path)
@@ -71,6 +85,9 @@ def ensure_schema_up_to_date(db_path: Path | str | None = None) -> None:
 
     cfg = _alembic_config(db_path)
 
+    if backup_before_upgrade and has_app_tables:
+        _backup_if_migrations_pending(db_path, backup_dir)
+
     if has_app_tables and not has_alembic_version:
         logger.info(
             "Existing pre-migration database detected -- stamping at baseline revision %s.",
@@ -79,6 +96,26 @@ def ensure_schema_up_to_date(db_path: Path | str | None = None) -> None:
         command.stamp(cfg, BASELINE_REVISION)
 
     command.upgrade(cfg, "head")
+
+
+def _backup_if_migrations_pending(
+    db_path: Path | str | None,
+    backup_dir: Path | str | None,
+) -> None:
+    """A failed backup must not block the upgrade -- the schema still needs to come up to
+    date for the app to work at all. Log loudly and continue rather than leaving the user
+    with an app that won't start because a nice-to-have safety step failed."""
+
+    if current_revision(db_path) == head_revision():
+        return
+
+    try:
+        backup_path = create_backup(
+            label="pre-migration", db_path=db_path, backup_dir=backup_dir
+        )
+        logger.info("Backed up database to %s before applying migrations.", backup_path)
+    except BackupError:
+        logger.exception("Could not back up the database before migrating; continuing anyway.")
 
 
 def current_revision(db_path: Path | str | None = None) -> str | None:

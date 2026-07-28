@@ -123,7 +123,7 @@ finance-ai/
 │   │   RELEASE_CHECKLIST.md, DECISIONS.md, decisions/
 ├── data/
 │   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx
-├── backups/, logs/, reports/
+├── backups/ (gitignored contents), logs/, reports/
 ├── tests/
 │   ├── test_opportunities.py, test_timeline.py, test_decision_engine.py, test_formatter.py,
 │   │   test_scenario_engine.py, test_scenario_formatter.py, test_background.py,
@@ -272,6 +272,30 @@ all**), including regression tests for both fixes above.
 Deterministic engine predating the Decision Engine; still powers the current briefing. Should
 eventually be retired or absorbed — don't maintain two competing recommendation engines long-term.
 
+### Database Backup & Restore
+`db/backup.py` — `create_backup(label=None)`, `list_backups()`, `restore_backup(path)`,
+`prune_backups(keep)`. `db/run_backup.py` is the CLI behind `make backup` / `list-backups` /
+`restore` / `prune-backups`. Key decisions:
+- **Uses sqlite3's native `Connection.backup()`, not a file copy.** Copying a live SQLite file
+  can capture a torn state if a write is in flight or a WAL/journal exists; the native API takes
+  a consistent snapshot even while the source is open, which matters because backups are taken
+  from inside the running app.
+- **Every backup is integrity-checked before being returned** (`PRAGMA integrity_check`) and
+  discarded if it fails — a corrupt backup is worse than none, because it looks like protection.
+- **Restore is destructive, so it first backs up the database it's about to overwrite**
+  (labelled `pre-restore`). Restoring the wrong file is recoverable. Restore also refuses to run
+  against a file that isn't a readable SQLite DB with an `accounts` table, failing *before*
+  touching anything rather than halfway through.
+- **`ensure_schema_up_to_date()` auto-backs-up (labelled `pre-migration`) only when migrations
+  are actually pending** against a database that already holds data. It runs on every startup,
+  so an unconditional backup would mean a file per launch. A failed backup logs and continues
+  rather than blocking the upgrade — the app still needs a current schema to run at all.
+- **`prune_backups()` is never called automatically.** Backups are the user's safety net and
+  deleting them is irreversible, so it stays explicit (`make prune-backups keep=N`). Growth is
+  slow in practice since automatic backups only happen before a migration or a restore.
+- **Not yet wired into the desktop UI** — backend + CLI only. The Settings page is still a
+  placeholder; surfacing backup/restore there is the natural follow-up.
+
 ### Timeline Engine
 `save_snapshot(month)`, `get_latest_snapshot()`, `get_previous_snapshot()`,
 `compare_snapshots(previous, current)`. Each metric change is classified improved/worsened/neutral
@@ -350,6 +374,10 @@ make init-db       # create the DB fresh, or migrate an existing one -- both via
 make reset-db      # delete the DB file, recreate it via migrations
 make db-migrate    # message="..." -- generate a new migration from model changes
 make db-upgrade    # apply pending migrations without deleting existing data (same call as init-db)
+make backup        # back up the database now (optional label="...")
+make list-backups  # show available backups, newest first
+make restore       # file=backups/finance-....db -- restore, saving current state first
+make prune-backups # keep=10 -- delete all but the newest N backups
 make import-demo   # import demo workbook
 make briefing      # print deterministic briefing
 make run           # launch desktop app
@@ -488,7 +516,7 @@ something like an ease/feasibility multiplier; move decision scoring out of the 
 concrete defects fixed, see §5; the "score saturates easily" limitation remains open**;
 essential-expense-only emergency fund calc; avoid asset/account double counting; **DTI basis
 (gross vs net) — done, see §5**; audit-log integration (import batch integration is done — see
-§10.D); database backup & restore.
+§10.D); **database backup & restore — done, see §5**.
 
 **Lower priority / later release:** Ollama provider adapter; cross-platform packaging; Windows
 verification; bank API integration; investment analytics; retirement readiness; tax/insurance modules.

@@ -14,7 +14,7 @@ help:
 	@echo "make prune-backups Delete all but the newest N backups (keep=10)"
 	@echo "make template      Create/refresh the blank Excel template to fill in"
 	@echo "make import-demo   Import the demo Excel workbook (refreshes the template first)"
-	@echo "make briefing      Print Open CFO briefing"
+	@echo "make briefing      Print the deterministic Executive Report (optional month=YYYY-MM)"
 	@echo "make status        Show git status"
 	@echo "make push          Push commits"
 	@echo "make run           Run Open CFO app"
@@ -54,7 +54,7 @@ import-demo: template
 	PYTHONPATH=src python -m finance_ai.imports.run_import
 
 briefing:
-	PYTHONPATH=src python -c "from finance_ai.finance.briefing_summary import briefing_summary; print(briefing_summary('2026-06'))"
+	PYTHONPATH=src python -m finance_ai.reports.run_briefing $(if $(month),--month "$(month)",)
 
 status:
 	git status

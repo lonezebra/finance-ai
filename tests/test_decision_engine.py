@@ -170,3 +170,75 @@ def test_goal_funding_skips_already_met_goal():
     decisions = _goal_funding_decisions(snapshot, [goal], today=date(2026, 6, 24))
 
     assert decisions == []
+
+def _snapshot(**overrides) -> FinancialSnapshot:
+    base = {
+        "month": "2026-06",
+        "total_assets": 100000.0,
+        "total_debt": 5000.0,
+        "net_worth": 95000.0,
+        "cash_balance": 30000.0,
+        "monthly_income": 5000.0,
+        "monthly_expenses": 4800.0,
+        "monthly_cash_flow": 200.0,
+        "savings_rate": 0.04,
+        "debt_to_income_ratio": 0.10,
+        "emergency_fund_months": 6.25,
+    }
+    base.update(overrides)
+    return FinancialSnapshot(**base)
+
+
+def test_decisions_are_returned_highest_score_first():
+    """Carried over from the retired Opportunity Engine's test suite -- the surviving engine
+    had no test for its own ordering, so deleting that file would have dropped the property
+    rather than moved it."""
+
+    decisions = generate_decisions(
+        _snapshot(emergency_fund_months=0.5),
+        debts=[DebtSummary(name="Card", balance=5000.0, interest_rate=24.0, minimum_payment=100.0)],
+    ).decisions
+
+    scores = [decision.score for decision in decisions]
+
+    assert len(scores) > 1
+    assert scores == sorted(scores, reverse=True)
+
+
+# --- savings rate, ported from the retired Opportunity Engine ----------------------------
+
+
+def test_low_savings_rate_surfaces_a_decision():
+    decisions = generate_decisions(_snapshot(savings_rate=0.04)).decisions
+
+    assert any(decision.title == "Increase savings rate" for decision in decisions)
+
+
+def test_healthy_savings_rate_surfaces_nothing():
+    decisions = generate_decisions(
+        _snapshot(savings_rate=0.25, monthly_expenses=3750.0, monthly_cash_flow=1250.0)
+    ).decisions
+
+    assert not any(decision.title == "Increase savings rate" for decision in decisions)
+
+
+def test_savings_rate_decision_does_not_fire_without_recorded_income():
+    """savings_rate is cash flow / income, stored as 0.0 when income is 0. Without this guard
+    that reads as a savings problem, when the real problem is having no income -- which the
+    cash-flow rule already reports."""
+
+    decisions = generate_decisions(
+        _snapshot(monthly_income=0.0, savings_rate=0.0, monthly_cash_flow=-4800.0)
+    ).decisions
+
+    assert not any(decision.title == "Increase savings rate" for decision in decisions)
+    assert any(decision.title == "Stabilize cash flow" for decision in decisions)
+
+
+def test_savings_rate_decision_states_the_monthly_shortfall():
+    decisions = generate_decisions(_snapshot(savings_rate=0.04)).decisions
+    decision = next(d for d in decisions if d.title == "Increase savings rate")
+
+    # 10% of $5,000 income is $500; current cash flow is $200, so $300 short.
+    assert "$300.00" in decision.description
+    assert "4.0%" in decision.reasoning

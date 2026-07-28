@@ -74,6 +74,7 @@ make run
 - **Executive Briefing** — your financial snapshot plus an AI-generated narrative (requires LM Studio running)
 - **Scenario Planning** — build a what-if (a raise, an extra debt payment, a windfall, ...) and see the projected impact, with an optional AI explanation (requires LM Studio running)
 - **AI Advisor** — ask an ongoing chat about your finances (requires LM Studio running)
+- **Settings** — back up your data, and restore an earlier backup if you need to
 
 ## Use your own data
 
@@ -116,6 +117,32 @@ both:
 
 If you leave the Essential column empty everywhere, the second figure shows "not set up yet"
 instead of a made-up number, and the Executive Briefing reminds you how to fill it in.
+
+## Keeping your data safe
+
+All your figures live in one file on your computer (`data/finance.db`). Nothing is uploaded
+anywhere. That also means you are the only backup, so Open CFO makes copies easy.
+
+Open the **Settings** page and click **Back up now**. You can add a short note ("before big
+import") to help you recognise it later. Saved backups are listed with the date and size, and
+each one has a **Restore** button.
+
+Restoring replaces everything currently in Open CFO with that copy. It asks you to confirm
+first, and it saves your current data as a backup before overwriting it — so if you restore
+the wrong one, you can go back.
+
+Open CFO also makes a backup automatically, without being asked, just before it changes the
+structure of the database during an update. That way an update can never be the thing that
+loses your history.
+
+If you prefer the command line:
+
+```bash
+make backup                                   # optional label="before big import"
+make list-backups
+make restore file=backups/finance-....db
+make prune-backups keep=10                    # delete all but the newest 10
+```
 
 ## Run the tests
 
@@ -227,14 +254,15 @@ Excel / CSV
 - Financial Snapshot, Health, and Confidence engines (Confidence Score is surfaced in the
   Executive Briefing, including warnings about stale data and Accounts/Assets overlap)
 - Emergency fund shown two ways: at current spending, and at essential spending only
+- Database backup and restore, from the Settings page or the command line
 - Decision Engine (debt payoff, emergency fund, investment, and goal-funding candidates)
 - Scenario Engine with a desktop UI (income/expense changes, extra debt payments, contribution
   changes, one-time purchases/windfalls; multiple adjustments per scenario), including an
   on-demand AI explanation of the projection
 - Executive Briefing (deterministic snapshot cards plus an AI-generated narrative)
 - Desktop app (CustomTkinter): Executive Briefing, Scenario Planning, Import Data, and AI Advisor
-  chat are functional; Dashboard, Accounts, Transactions, Debt, Assets, Budget, Goals, Reports, and
-  Settings are still placeholders
+  chat, and Settings (backup/restore) are functional; Dashboard, Accounts, Transactions, Debt,
+  Assets, Budget, Goals and Reports are still placeholders
 - Local AI Runtime and Strategic Advisor (LM Studio), including a multi-turn chat
 - Prompt Library
 - Thinking state framework

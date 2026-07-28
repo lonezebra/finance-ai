@@ -96,7 +96,16 @@ Re-importing the same file later is safe. Accounts, debts, assets, budgets and g
 matched by name and updated in place rather than duplicated, and transactions that exactly
 match one already saved are skipped.
 
-### Two things worth knowing when you fill it in
+### Three things worth knowing when you fill it in
+
+**There is no separate place to enter your income.** Open CFO doesn't ask you to declare a
+salary or expected monthly income anywhere -- it works out your monthly income by adding up
+the transactions that came in that month, the same way it works out spending by adding up the
+ones that went out. In the Transactions sheet, that means your paycheck (or any other income)
+needs its own row with a positive amount and a category of type `income` (see the "Salary"
+example row in the Categories sheet). Skip that and Open CFO has no way to know you have any
+income at all, which throws off savings rate, debt-to-income, and every score that depends on
+them.
 
 **Accounts and Assets should not overlap.** Put money you can spend now in **Accounts**
 (current account, savings, cash). Put everything else in **Assets** (your home, a car, a

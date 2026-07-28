@@ -190,7 +190,9 @@ still imports as a new transaction. `import_dataset()` returns a typed `ImportRe
 monthly_cash_flow, savings_rate, debt_to_income_ratio, emergency_fund_months`
 
 Calculations:
-- `total_assets` = sum(account balances) + sum(asset values) — *risk of double-counting overlap*
+- `total_assets` = sum(account balances) + sum(asset values) — correct **only because the two
+  tables are meant to be disjoint** (Accounts = liquid balances, Assets = everything else). See
+  the overlap-detection note in §5.
 - `net_worth` = total_assets − total_debt
 - `monthly_income` = sum of positive transactions in month
 - `monthly_expenses` = abs(sum of negative transactions in month)
@@ -200,6 +202,31 @@ Calculations:
   take-home (net) income**, since `monthly_income` is the sum of positive transactions, i.e. money
   that actually landed in an account. Not lender-grade; see the bands note in §5.
 - `emergency_fund_months` = cash_balance / monthly_expenses (uses *all* expenses, not essential-only)
+
+### Accounts vs Assets: the disjoint contract (and overlap detection)
+**The two tables are defined as mutually exclusive.** Accounts holds liquid balances (the
+template's examples are Checking and Savings); Assets holds everything else (Home, Roth IRA).
+`total_assets = sum(accounts) + sum(assets)` is only correct under that contract, and
+`get_cash_balance()` relies on the same split (it filters accounts to `checking/savings/cash`).
+The contract was implicit — the template followed it, the code assumed it, nothing stated or
+enforced it.
+**Done — violations are now detected and reported, never silently corrected.**
+`confidence.py::find_account_asset_overlaps()` finds names present in both tables
+(case- and whitespace-insensitive exact match, aggregating duplicates within a table since
+account names aren't unique in the schema) and raises a **high-severity Confidence Score
+issue** naming the entries and the amount at stake (the *smaller* of the two values — if they
+disagree, only the overlapping portion is certainly duplicated). Flat −15 penalty regardless
+of overlap count: it's one class of problem, and the message carries the per-entry detail.
+**Deliberately does not adjust `total_assets`.** An exact name match is strong evidence but not
+proof — a "Vanguard" brokerage account and a "Vanguard" asset row could legitimately be
+different things — and silently changing net worth on a guess is worse than the double-count,
+because the guess is invisible while the double-count at least shows up as a suspiciously
+large number. Matching is exact rather than fuzzy for the same reason: "Savings" vs "Savings
+Account" would generate false alarms that train the user to ignore the warning. Widening the
+heuristic is a follow-up if exact matching proves too narrow in practice.
+*Rejected alternative:* a schema link (`asset.account_id`, or a "already counted" flag). That
+creates two sources of truth for one value and immediately raises "which wins when they
+disagree?" — significant new ambiguity for little gain over reporting.
 
 ### Debt-to-Income bands (`finance/thresholds.py`)
 **Done — the income basis was wrong relative to the thresholds.** `monthly_income` is the sum of
@@ -514,7 +541,8 @@ rather than deferring to one giant hardening pass.
 something like an ease/feasibility multiplier; move decision scoring out of the model property;
 **data-freshness signal for Confidence Score — done, see §5**; **Health Score weighting — two
 concrete defects fixed, see §5; the "score saturates easily" limitation remains open**;
-essential-expense-only emergency fund calc; avoid asset/account double counting; **DTI basis
+essential-expense-only emergency fund calc; **asset/account double counting — detection done,
+see §5**; **DTI basis
 (gross vs net) — done, see §5**; audit-log integration (import batch integration is done — see
 §10.D); **database backup & restore — done, see §5**.
 

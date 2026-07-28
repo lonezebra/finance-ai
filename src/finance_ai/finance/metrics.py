@@ -42,6 +42,17 @@ def _safe_divide(numerator: float, denominator: float) -> float:
 
 
 def get_total_assets(session) -> float:
+    """Adding the two tables together is only correct because they're meant to be disjoint:
+    Accounts holds liquid balances (Checking, Savings) and Assets holds everything else
+    (Home, Roth IRA). get_cash_balance() relies on the same split.
+
+    Nothing in the schema enforces it, so recording one holding in both tables inflates this
+    figure. That's detected and reported as a Confidence Score issue
+    (confidence.py::find_account_asset_overlaps) rather than corrected here -- an exact name
+    match is strong evidence but not proof, and silently adjusting net worth on a guess would
+    be worse than the double-count.
+    """
+
     account_total = session.query(func.coalesce(func.sum(Account.current_balance), 0)).scalar()
     asset_total = session.query(func.coalesce(func.sum(Asset.current_value), 0)).scalar()
     return float(account_total + asset_total)

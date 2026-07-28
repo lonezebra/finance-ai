@@ -122,7 +122,8 @@ finance-ai/
 │   │   AI_ARCHITECTURE.md, COMMANDS.md, DEVELOPMENT_SETUP.md,
 │   │   RELEASE_CHECKLIST.md, DECISIONS.md, decisions/
 ├── data/
-│   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx (generated, gitignored)
+│   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx (committed on purpose --
+│   │   see the `make template` note below)
 ├── backups/ (gitignored contents), logs/, reports/
 ├── tests/
 │   ├── test_timeline.py, test_decision_engine.py, test_formatter.py, test_health.py,
@@ -466,7 +467,10 @@ make init-db       # create the DB fresh, or migrate an existing one -- both via
 make reset-db      # delete the DB file, recreate it via migrations
 make db-migrate    # message="..." -- generate a new migration from model changes
 make db-upgrade    # apply pending migrations without deleting existing data (same call as init-db)
-make template      # create/refresh the blank Excel template (NOT committed -- generated)
+make template      # regenerate the blank Excel template -- committed to git (data/exports/
+                   # finance_template.xlsx) so it's visible and downloadable straight from
+                   # GitHub without cloning the repo. Re-run and re-commit after changing
+                   # SHEETS/EXAMPLE_ROWS in exports/excel_template.py.
 make backup        # back up the database now (optional label="...")
 make list-backups  # show available backups, newest first
 make restore       # file=backups/finance-....db -- restore, saving current state first

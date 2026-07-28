@@ -78,16 +78,19 @@ make run
 
 ## Use your own data
 
-Open CFO reads from an Excel workbook you fill in yourself. Create a blank one with:
+Open CFO reads from an Excel workbook you fill in yourself. The blank template is committed
+in this repo at [`data/exports/finance_template.xlsx`](data/exports/finance_template.xlsx) --
+download it straight from GitHub if you just want to look at it or start filling it in, no
+install required. If you've already cloned the repo, you can also regenerate a fresh copy
+with:
 
 ```bash
 make template
 ```
 
-That writes `data/exports/finance_template.xlsx` with one sheet per kind of information
-(Accounts, Categories, Transactions, Debts, Assets, Budgets, Goals) and a couple of example
-rows in each to show the shape. Replace the examples with your own figures, then import it
-from the **Import Data** page in the app.
+Either way you get one sheet per kind of information (Accounts, Categories, Transactions,
+Debts, Assets, Budgets, Goals) and a couple of example rows in each to show the shape. Replace
+the examples with your own figures, then import it from the **Import Data** page in the app.
 
 Re-importing the same file later is safe. Accounts, debts, assets, budgets and goals are
 matched by name and updated in place rather than duplicated, and transactions that exactly

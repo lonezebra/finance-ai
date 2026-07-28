@@ -125,7 +125,7 @@ finance-ai/
 │   ├── finance.db (gitignored), imports/, exports/finance_template.xlsx (generated, gitignored)
 ├── backups/ (gitignored contents), logs/, reports/
 ├── tests/
-│   ├── test_opportunities.py, test_timeline.py, test_decision_engine.py, test_formatter.py,
+│   ├── test_timeline.py, test_decision_engine.py, test_formatter.py, test_health.py,
 │   │   test_scenario_engine.py, test_scenario_formatter.py, test_background.py,
 │   │   test_thinking.py, test_errors.py, test_briefing_presenter.py,
 │   │   test_import_presenter.py, test_import_errors.py
@@ -136,7 +136,7 @@ finance-ai/
     ├── db/          # SQLAlchemy models, init_db
     ├── decision/    # Decision Engine
     ├── exports/
-    ├── finance/     # Finance Engine, Opportunity Engine (legacy)
+    ├── finance/     # Finance Engine (metrics, health, confidence, thresholds, summary)
     ├── history/     # Timeline Engine (snapshots, comparison, interpretation)
     ├── imports/     # reader, validator, mapper, importer, errors
     ├── reports/     # Executive Report Engine + formatter.py
@@ -279,7 +279,7 @@ heuristics like the emergency-fund bands, not lender rules. **Deliberately not**
 from net via an assumed tax rate — that fabricates a user figure, which Rule 3 rules out; a true
 lender DTI would need the user to enter gross income, which the data model doesn't capture.
 Centralized in `finance/thresholds.py` because these were previously bare literals duplicated
-across `health.py`, `reports/engine.py`, `decision/engine.py` and `opportunities.py` — four copies
+across `health.py`, `reports/engine.py`, `decision/engine.py` and `opportunities.py` (now retired) — four copies
 that had to move together. User-facing labels now say "(take-home)" so the number isn't silently
 compared to the lender benchmark. *Note:* the stored `debt_to_income_ratio` **value** is unchanged,
 so `financial_snapshot_records` history stays comparable; only the bands and labels moved.
@@ -331,9 +331,29 @@ positive signals would mean restructuring the model, which Rule 1 puts out of sc
 weighting pass. `tests/test_health.py` now covers this module (it previously had **no tests at
 all**), including regression tests for both fixes above.
 
-### Opportunity Engine (legacy/transitional)
-Deterministic engine predating the Decision Engine; still powers the current briefing. Should
-eventually be retired or absorbed — don't maintain two competing recommendation engines long-term.
+### Opportunity Engine — **retired**
+The deterministic engine that predated the Decision Engine has been removed, along with the
+chain that was its only remaining caller: `opportunities.py`, `open_cfo.py`,
+`briefing_summary.py`, `health_summary.py`. Notes for the record:
+- **It was never powering the app.** Despite what this file previously said, the only entry
+  point into that chain was `make briefing` — a CLI printout. The desktop UI, the AI advisor,
+  and the Scenario Engine all went through the Executive Report Engine + Decision Engine.
+  `health_summary.py` had *zero* callers at all.
+- **`make briefing` now prints the real Executive Report** via `reports/run_briefing.py`
+  (`create_executive_report(persist=False)` → `format_executive_report_for_ai()`), so the
+  command line and the product can no longer disagree about what the numbers say. Takes an
+  optional `month=YYYY-MM`.
+- **One capability was genuinely unique to it and was ported, not dropped:** the
+  "Increase savings rate" recommendation, now `decision/engine.py::_savings_rate_decision()`
+  gated on `MINIMUM_HEALTHY_SAVINGS_RATE` (10%). It only fires when income is recorded —
+  `savings_rate` is cash flow ÷ income, stored as `0.0` when income is 0, which would
+  otherwise read as a savings problem when the real problem is no income (already covered by
+  the cash-flow rule).
+- Its "Improve financial data quality" opportunity needed no port: the Financial Confidence
+  Score now does that job properly and is surfaced as the first card in the briefing.
+- `test_opportunities.py`'s sort-order assertion was carried into
+  `test_decision_engine.py` — the surviving engine had no test for its own ordering, so
+  deleting the file would have dropped the property rather than moved it.
 
 ### Database Backup & Restore
 `db/backup.py` — `create_backup(label=None)`, `list_backups()`, `restore_backup(path)`,
@@ -463,7 +483,6 @@ A 9B-class model is worth considering as a fast fallback. Benchmarking is develo
 don't auto-invoke multiple models in normal app flow.
 
 ### Known test suite (~7 tests at handoff time)
-- Opportunities: low confidence prioritizes data quality; opportunities sort by score
 - Timeline: changed metrics detected; debt decrease → improved; large cash increase → high significance
 - Decision: low emergency fund → build emergency fund; stable snapshot → optimize capital allocation
 
@@ -574,7 +593,8 @@ rather than deferring to one giant hardening pass.
    public GitHub handle so nothing new is revealed, but they read as noise to anyone who
    clones the repo.
 
-**Medium priority:** consolidate Opportunity + Decision engines; rename `difficulty_score` to
+**Medium priority:** **Opportunity + Decision engine consolidation — done (Opportunity Engine
+retired), see §5**; rename `difficulty_score` to
 something like an ease/feasibility multiplier; move decision scoring out of the model property;
 **data-freshness signal for Confidence Score — done, see §5**; **Health Score weighting — two
 concrete defects fixed, see §5; the "score saturates easily" limitation remains open**;

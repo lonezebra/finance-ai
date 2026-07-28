@@ -10,13 +10,17 @@ from finance_ai.decision.models import (
     GoalSummary,
     TimeHorizon,
 )
-from finance_ai.finance.summary import format_currency, format_months
+from finance_ai.finance.summary import format_currency, format_months, format_percent
 from finance_ai.finance.thresholds import DTI_CONSERVATIVE, DTI_ELEVATED
 
 EMERGENCY_FUND_TARGET_MONTHS = 3
 # Horizon over which we suggest closing an emergency-fund gap. Chosen as a pace that's
 # aggressive but achievable for most households, not derived from user data.
 EMERGENCY_FUND_CONTRIBUTION_HORIZON_MONTHS = 6
+
+# A savings rate below this is worth acting on. Ported from the retired Opportunity
+# Engine, which was the only place this signal existed.
+MINIMUM_HEALTHY_SAVINGS_RATE = 0.10
 
 # Interest rates are stored as whole-number percentages (e.g. 24.99), not fractions.
 # Debts at or above this rate are treated as "high interest" (roughly typical credit-card
@@ -70,6 +74,13 @@ def generate_decisions(
 
     if snapshot.emergency_fund_months < EMERGENCY_FUND_TARGET_MONTHS:
         decisions.append(_emergency_fund_decision(snapshot))
+
+    # Only meaningful with income to measure against: savings_rate is cash flow / income,
+    # which _safe_divide reports as 0.0 when income is 0 -- that would otherwise look like a
+    # savings problem when the real problem is having no recorded income at all, which the
+    # cash-flow rule below already covers.
+    if snapshot.monthly_income > 0 and snapshot.savings_rate < MINIMUM_HEALTHY_SAVINGS_RATE:
+        decisions.append(_savings_rate_decision(snapshot))
 
     if snapshot.debt_to_income_ratio > DTI_ELEVATED:
         decisions.append(
@@ -153,6 +164,28 @@ def _emergency_fund_decision(snapshot) -> FinancialDecision:
         reasoning=(
             f"Emergency fund coverage is {format_months(snapshot.emergency_fund_months)}, below "
             f"the {EMERGENCY_FUND_TARGET_MONTHS}-month target."
+        ),
+    )
+
+
+def _savings_rate_decision(snapshot) -> FinancialDecision:
+    target_cash_flow = snapshot.monthly_income * MINIMUM_HEALTHY_SAVINGS_RATE
+    shortfall = max(target_cash_flow - snapshot.monthly_cash_flow, 0)
+
+    return FinancialDecision(
+        title="Increase savings rate",
+        description=(
+            f"Aim to save at least {MINIMUM_HEALTHY_SAVINGS_RATE:.0%} of income. Freeing up "
+            f"{format_currency(shortfall)}/month would reach that from where you are now."
+        ),
+        priority=DecisionPriority.MEDIUM,
+        expected_impact_score=70,
+        confidence_score=85,
+        ease_multiplier=0.6,
+        time_horizon=TimeHorizon.SHORT_TERM,
+        reasoning=(
+            f"Savings rate is {format_percent(snapshot.savings_rate)}, below the "
+            f"{MINIMUM_HEALTHY_SAVINGS_RATE:.0%} guideline, which slows goal progress."
         ),
     )
 

@@ -376,8 +376,17 @@ chain that was its only remaining caller: `opportunities.py`, `open_cfo.py`,
 - **`prune_backups()` is never called automatically.** Backups are the user's safety net and
   deleting them is irreversible, so it stays explicit (`make prune-backups keep=N`). Growth is
   slow in practice since automatic backups only happen before a migration or a restore.
-- **Not yet wired into the desktop UI** — backend + CLI only. The Settings page is still a
-  placeholder; surfacing backup/restore there is the natural follow-up.
+- **Now wired into the desktop UI** — the Settings page (previously a placeholder) has
+  "Back up now" with an optional note, a list of saved backups (date, size, note), and a
+  per-backup Restore button. `SettingsPresenter` takes the three backup functions as
+  parameters so it's testable without touching the real database or backups directory;
+  the confirmation dialog lives in `SettingsView`, keeping the presenter display-free.
+  Restore is the app's only destructive action, so it confirms first, spelling out that
+  current data is saved beforehand. **Verified that no engine disposal is needed after a
+  restore:** SQLite's backup API rewrites the destination file's pages in place, so even a
+  session held open across the restore reads the restored data. What *doesn't* refresh is
+  text a presenter already cached (a generated AI briefing or scenario explanation), and
+  the post-restore message says exactly that rather than a vague "restart the app".
 
 ### Timeline Engine
 `save_snapshot(month)`, `get_latest_snapshot()`, `get_previous_snapshot()`,
@@ -686,6 +695,13 @@ auto-generated Scenario projections ("compare decisions through scenarios").
   (the engine already models `Scenario.adjustments` as a list) rather than a single-adjustment v1 —
   manually verified a compound raise + extra-debt-payment scenario composes correctly against the
   real demo database.
+
+- D6 (Settings: backup & restore): **Done.** Fills the last placeholder that had a concrete
+  backend waiting behind it. `SettingsPresenter` + `SettingsView`, same `attach()`/`detach()` +
+  defensive `tkinter.TclError` pattern as the others, owned by `MainWindow`. Backup is
+  synchronous (a ~60KB file copy is instant, so no `BackgroundTask` needed). Restore confirms
+  via `tkinter.messagebox.askyesno` before acting — the dialog is in the view so the presenter
+  stays testable headless. See §5 for the staleness finding.
 
 **E. Public beta criteria** — keep the repo private until a user can: clone/install with clear
 instructions, launch reliably, import a workbook, see an Executive Briefing, run a scenario, ask

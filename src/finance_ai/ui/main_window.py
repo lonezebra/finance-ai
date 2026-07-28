@@ -6,7 +6,9 @@ from finance_ai.ui.import_view import ImportView
 from finance_ai.ui.presenters.briefing_presenter import BriefingPresenter
 from finance_ai.ui.presenters.chat_presenter import ChatPresenter
 from finance_ai.ui.presenters.scenario_presenter import ScenarioPresenter
+from finance_ai.ui.presenters.settings_presenter import SettingsPresenter
 from finance_ai.ui.scenario_view import ScenarioView
+from finance_ai.ui.settings_view import SettingsView
 
 
 class MainWindow(ctk.CTk):
@@ -32,6 +34,10 @@ class MainWindow(ctk.CTk):
         # Same reasoning again: the adjustments being built, the last projection, and any
         # in-flight AI explanation survive navigating away and back.
         self.scenario_presenter = ScenarioPresenter()
+
+        # Owned here for consistency with the others, though Settings holds no in-flight
+        # work -- its state is just the backup list and the last status message.
+        self.settings_presenter = SettingsPresenter()
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -105,6 +111,11 @@ class MainWindow(ctk.CTk):
         view = ScenarioView(self.content, presenter=self.scenario_presenter)
         view.grid(row=0, column=0, sticky="nsew")
 
+    def _show_settings(self):
+        self._clear_content()
+        view = SettingsView(self.content, presenter=self.settings_presenter)
+        view.grid(row=0, column=0, sticky="nsew")
+
     def _show_placeholder(self, name: str):
         if name == "Executive Briefing":
             self._show_briefing()
@@ -120,6 +131,10 @@ class MainWindow(ctk.CTk):
 
         if name == "Scenario Planning":
             self._show_scenario()
+            return
+
+        if name == "Settings":
+            self._show_settings()
             return
 
         self._clear_content()

@@ -40,7 +40,7 @@ IMPROVES_WHEN_INCREASED = {
 IMPROVES_WHEN_DECREASED = {
     "Total Debt",
     "Monthly Expenses",
-    "Debt-to-Income Ratio",
+    "Debt-to-Income Ratio (take-home)",
 }
 
 

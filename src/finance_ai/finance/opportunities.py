@@ -4,6 +4,7 @@ from enum import Enum
 from finance_ai.finance.confidence import FinancialConfidenceScore
 from finance_ai.finance.health import FinancialHealthScore
 from finance_ai.finance.metrics import FinancialSnapshot
+from finance_ai.finance.thresholds import DTI_ELEVATED
 
 
 class OpportunityCategory(str, Enum):
@@ -110,17 +111,20 @@ def generate_opportunities(
             )
         )
 
-    if snapshot.debt_to_income_ratio > 0.36:
+    if snapshot.debt_to_income_ratio > DTI_ELEVATED:
         opportunities.append(
             Opportunity(
-                title="Reduce debt-to-income ratio",
+                title="Reduce debt payments relative to income",
                 description="Evaluate whether extra debt payments or refinancing would improve flexibility.",
                 category=OpportunityCategory.DEBT,
                 impact_score=75,
                 confidence_score=confidence.score,
                 difficulty=Difficulty.MEDIUM,
                 time_horizon="3-24 months",
-                reason="Debt-to-income above 36% can limit flexibility and increase financial risk.",
+                reason=(
+                    f"Debt payments above {DTI_ELEVATED:.0%} of take-home income can limit "
+                    "flexibility and increase financial risk."
+                ),
             )
         )
 

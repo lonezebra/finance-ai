@@ -196,8 +196,30 @@ Calculations:
 - `monthly_expenses` = abs(sum of negative transactions in month)
 - `monthly_cash_flow` = income − expenses
 - `savings_rate` = cash_flow / income (0 if income is 0)
-- `debt_to_income_ratio` = sum(debt minimum payments) / monthly income (simplified, not lender-grade)
+- `debt_to_income_ratio` = sum(debt minimum payments) / monthly income — **note the basis: this is
+  take-home (net) income**, since `monthly_income` is the sum of positive transactions, i.e. money
+  that actually landed in an account. Not lender-grade; see the bands note in §5.
 - `emergency_fund_months` = cash_balance / monthly_expenses (uses *all* expenses, not essential-only)
+
+### Debt-to-Income bands (`finance/thresholds.py`)
+**Done — the income basis was wrong relative to the thresholds.** `monthly_income` is the sum of
+positive transactions, i.e. **take-home (net) pay** — the template's own example is a "Paycheck" of
+3500 deposited into Checking, and gross pay never lands in a checking account. But the bands being
+compared against (25% / 36% / 50%) are the conventional **lender** figures, which are defined on
+**gross** income. Applying gross bands to a net denominator reports a systematically inflated
+ratio: the same debt burden looks worse purely because the denominator is smaller. Concretely,
+someone at ~36% of take-home used to trip "above 36%" → a −10 Health Score penalty, an "elevated"
+concern, *and* a shift of `recommended_focus` to "Reduce debt burden" — a false alarm on all three.
+Bands are now `DTI_CONSERVATIVE` 30% / `DTI_ELEVATED` 45% / `DTI_HIGH` 60%, the conventional gross
+bands scaled for take-home (net is typically ~75–80% of gross with payroll withholding). These are
+heuristics like the emergency-fund bands, not lender rules. **Deliberately not** estimating gross
+from net via an assumed tax rate — that fabricates a user figure, which Rule 3 rules out; a true
+lender DTI would need the user to enter gross income, which the data model doesn't capture.
+Centralized in `finance/thresholds.py` because these were previously bare literals duplicated
+across `health.py`, `reports/engine.py`, `decision/engine.py` and `opportunities.py` — four copies
+that had to move together. User-facing labels now say "(take-home)" so the number isn't silently
+compared to the lender benchmark. *Note:* the stored `debt_to_income_ratio` **value** is unchanged,
+so `financial_snapshot_records` history stays comparable; only the bands and labels moved.
 
 ### Financial Confidence Score
 Measures data completeness/trustworthiness, **not** wealth. Starts at 100, subtracts for missing
@@ -285,8 +307,9 @@ debt, expenses, DTI. These are heuristics, not universal truths.
 `FinancialDecision(title, description, priority, expected_impact_score, confidence_score,
 ease_multiplier, time_horizon, reasoning, reversible)`, ranked into a `DecisionSet`.
 Score = expected_impact × (confidence / 100) × ease_multiplier.
-Rules: emergency fund < 3mo → build it; DTI > 36% → reduce debt; negative cash flow → stabilize;
-positive cash flow + 6mo+ EF + DTI ≤25% → optimize capital allocation; else → maintain plan.
+Rules: emergency fund < 3mo → build it; DTI > `DTI_ELEVATED` → reduce debt; negative cash flow →
+stabilize; positive cash flow + 6mo+ EF + DTI ≤ `DTI_CONSERVATIVE` → optimize capital allocation;
+else → maintain plan. (Bands come from `finance/thresholds.py` — see §5.)
 **Both pieces of known debt here are resolved:**
 - *Renamed `difficulty_score` → `ease_multiplier`.* The old name read backwards: the value is a
   multiplier where **higher ranks a decision higher**, so it was always measuring ease, not
@@ -491,8 +514,8 @@ rather than deferring to one giant hardening pass.
 something like an ease/feasibility multiplier; move decision scoring out of the model property;
 **data-freshness signal for Confidence Score — done, see §5**; **Health Score weighting — two
 concrete defects fixed, see §5; the "score saturates easily" limitation remains open**;
-essential-expense-only emergency fund calc; avoid asset/account double counting; better DTI
-methodology (gross vs net income); audit-log integration (import batch integration is done — see
+essential-expense-only emergency fund calc; avoid asset/account double counting; **DTI basis
+(gross vs net) — done, see §5**; audit-log integration (import batch integration is done — see
 §10.D); **database backup & restore — done, see §5**.
 
 **Lower priority / later release:** Ollama provider adapter; cross-platform packaging; Windows

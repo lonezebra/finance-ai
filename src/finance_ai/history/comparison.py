@@ -1,6 +1,5 @@
 from finance_ai.history.models import SnapshotComparison, SnapshotDifference, SnapshotRecord
 
-
 METRICS_TO_COMPARE = {
     "total_assets": "Total Assets",
     "total_debt": "Total Debt",
@@ -10,7 +9,7 @@ METRICS_TO_COMPARE = {
     "monthly_expenses": "Monthly Expenses",
     "monthly_cash_flow": "Monthly Cash Flow",
     "savings_rate": "Savings Rate",
-    "debt_to_income_ratio": "Debt-to-Income Ratio",
+    "debt_to_income_ratio": "Debt-to-Income Ratio (take-home)",
     "emergency_fund_months": "Emergency Fund Months",
 }
 

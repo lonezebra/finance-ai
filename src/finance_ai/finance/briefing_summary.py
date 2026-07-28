@@ -17,7 +17,7 @@ def format_briefing(briefing: OpenCFOBriefing) -> str:
         f"- Total Debt: {format_currency(snapshot.total_debt)}",
         f"- Monthly Cash Flow: {format_currency(snapshot.monthly_cash_flow)}",
         f"- Savings Rate: {format_percent(snapshot.savings_rate)}",
-        f"- Debt-to-Income Ratio: {format_percent(snapshot.debt_to_income_ratio)}",
+        f"- Debt-to-Income Ratio (take-home): {format_percent(snapshot.debt_to_income_ratio)}",
         f"- Emergency Fund: {format_months(snapshot.emergency_fund_months)}",
         "",
         f"Financial Confidence: {confidence.score}/100 ({confidence.label})",

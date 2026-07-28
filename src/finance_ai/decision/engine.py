@@ -11,6 +11,7 @@ from finance_ai.decision.models import (
     TimeHorizon,
 )
 from finance_ai.finance.summary import format_currency, format_months
+from finance_ai.finance.thresholds import DTI_CONSERVATIVE, DTI_ELEVATED
 
 EMERGENCY_FUND_TARGET_MONTHS = 3
 # Horizon over which we suggest closing an emergency-fund gap. Chosen as a pace that's
@@ -70,7 +71,7 @@ def generate_decisions(
     if snapshot.emergency_fund_months < EMERGENCY_FUND_TARGET_MONTHS:
         decisions.append(_emergency_fund_decision(snapshot))
 
-    if snapshot.debt_to_income_ratio > 0.36:
+    if snapshot.debt_to_income_ratio > DTI_ELEVATED:
         decisions.append(
             FinancialDecision(
                 title="Reduce debt burden",
@@ -80,7 +81,9 @@ def generate_decisions(
                 confidence_score=90,
                 ease_multiplier=0.7,
                 time_horizon=TimeHorizon.SHORT_TERM,
-                reasoning="Debt-to-income ratio is above the preferred threshold.",
+                reasoning=(
+                    f"Debt payments are above {DTI_ELEVATED:.0%} of take-home income."
+                ),
             )
         )
 
@@ -101,7 +104,7 @@ def generate_decisions(
     if (
         snapshot.monthly_cash_flow > 0
         and snapshot.emergency_fund_months >= 6
-        and snapshot.debt_to_income_ratio <= 0.25
+        and snapshot.debt_to_income_ratio <= DTI_CONSERVATIVE
     ):
         decisions.append(_capital_allocation_decision(snapshot))
 
